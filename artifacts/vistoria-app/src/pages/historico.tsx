@@ -1,27 +1,41 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { enUS } from "date-fns/locale";
+import { ptBR, enUS } from "date-fns/locale";
 import { History, Filter, RefreshCw, ChevronRight, AlertCircle, Clock } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useListInspections, getListInspectionsQueryKey, ListInspectionsUrgencia } from "@workspace/api-client-react";
+import { useListInspections, useListCondominios, getListInspectionsQueryKey, getListCondominiosQueryKey, ListInspectionsUrgencia, ListInspectionsStatus } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 
+const STATUS_COLORS: Record<string, string> = {
+  rascunho: "bg-gray-100 text-gray-700 border-gray-200",
+  gerado: "bg-blue-100 text-blue-700 border-blue-200",
+  pronto_para_envio: "bg-yellow-100 text-yellow-700 border-yellow-200",
+  enviado: "bg-green-100 text-green-700 border-green-200",
+};
+
 export default function HistoricoPage() {
   const { t, i18n } = useTranslation();
   const [urgenciaFilter, setUrgenciaFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [condominioFilter, setCondominioFilter] = useState<string>("all");
 
   const queryParams = {
-    ...(urgenciaFilter !== "all" ? { urgencia: urgenciaFilter as ListInspectionsUrgencia } : {})
+    ...(urgenciaFilter !== "all" ? { urgencia: urgenciaFilter as ListInspectionsUrgencia } : {}),
+    ...(statusFilter !== "all" ? { status: statusFilter as ListInspectionsStatus } : {}),
+    ...(condominioFilter !== "all" ? { condominioId: parseInt(condominioFilter, 10) } : {}),
   };
 
   const { data, isPending, isError, refetch, isRefetching } = useListInspections(queryParams, {
     query: { queryKey: getListInspectionsQueryKey(queryParams) }
+  });
+
+  const { data: condominios } = useListCondominios({
+    query: { queryKey: getListCondominiosQueryKey() }
   });
 
   const locale = i18n.language === "pt" ? ptBR : enUS;
@@ -38,6 +52,16 @@ export default function HistoricoPage() {
     return t("historico.low");
   };
 
+  const getStatusLabel = (s: string) => t(`historico.status.${s}` as any) || s;
+
+  const hasFilters = urgenciaFilter !== "all" || statusFilter !== "all" || condominioFilter !== "all";
+
+  const clearFilters = () => {
+    setUrgenciaFilter("all");
+    setStatusFilter("all");
+    setCondominioFilter("all");
+  };
+
   return (
     <div className="space-y-6 max-w-3xl mx-auto pb-12">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -45,32 +69,61 @@ export default function HistoricoPage() {
           <h1 className="text-2xl font-bold tracking-tight">{t("historico.title")}</h1>
           <p className="text-muted-foreground">{t("historico.subtitle")}</p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isRefetching}
-          className="w-full sm:w-auto"
-        >
+        <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isRefetching} className="w-full sm:w-auto">
           <RefreshCw className={`h-4 w-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />
           {t("common.refresh")}
         </Button>
       </div>
 
-      <div className="flex items-center gap-3 bg-card p-3 rounded-lg border">
-        <Filter className="h-5 w-5 text-muted-foreground ml-2" />
-        <Select value={urgenciaFilter} onValueChange={setUrgenciaFilter}>
-          <SelectTrigger className="w-full border-none shadow-none focus:ring-0" data-testid="select-filter-urgencia">
-            <SelectValue placeholder={t("historico.filterByUrgency")} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{t("historico.allUrgencies")}</SelectItem>
-            <SelectItem value="baixa">{t("historico.low")}</SelectItem>
-            <SelectItem value="média">{t("historico.medium")}</SelectItem>
-            <SelectItem value="alta">{t("historico.high")}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <Card className="p-3">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">{t("common.select")}</span>
+          {hasFilters && (
+            <button onClick={clearFilters} className="ml-auto text-xs text-primary hover:underline">
+              {t("historico.clearFilters")}
+            </button>
+          )}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <Select value={urgenciaFilter} onValueChange={setUrgenciaFilter}>
+            <SelectTrigger className="text-sm" data-testid="select-filter-urgencia">
+              <SelectValue placeholder={t("historico.filterByUrgency")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("historico.allUrgencies")}</SelectItem>
+              <SelectItem value="baixa">{t("historico.low")}</SelectItem>
+              <SelectItem value="média">{t("historico.medium")}</SelectItem>
+              <SelectItem value="alta">{t("historico.high")}</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="text-sm" data-testid="select-filter-status">
+              <SelectValue placeholder={t("historico.filterByStatus")} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("historico.allStatuses")}</SelectItem>
+              <SelectItem value="rascunho">{t("historico.status.rascunho")}</SelectItem>
+              <SelectItem value="gerado">{t("historico.status.gerado")}</SelectItem>
+              <SelectItem value="pronto_para_envio">{t("historico.status.pronto_para_envio")}</SelectItem>
+              <SelectItem value="enviado">{t("historico.status.enviado")}</SelectItem>
+            </SelectContent>
+          </Select>
+          {condominios && condominios.length > 0 && (
+            <Select value={condominioFilter} onValueChange={setCondominioFilter}>
+              <SelectTrigger className="text-sm" data-testid="select-filter-condominio">
+                <SelectValue placeholder={t("historico.filterByCondominio")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">{t("historico.allCondominios")}</SelectItem>
+                {condominios.map(c => (
+                  <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      </Card>
 
       {isPending ? (
         <div className="flex justify-center py-12">
@@ -87,14 +140,12 @@ export default function HistoricoPage() {
           <History className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-20" />
           <h3 className="text-lg font-medium text-foreground">{t("historico.noInspections")}</h3>
           <p className="text-muted-foreground mb-6 mt-1">
-            {urgenciaFilter !== "all" ? t("historico.noInspectionsFilter") : t("historico.noInspectionsEmpty")}
+            {hasFilters ? t("historico.noInspectionsFilter") : t("historico.noInspectionsEmpty")}
           </p>
-          {urgenciaFilter !== "all" ? (
-            <Button variant="outline" onClick={() => setUrgenciaFilter("all")}>{t("historico.clearFilters")}</Button>
+          {hasFilters ? (
+            <Button variant="outline" onClick={clearFilters}>{t("historico.clearFilters")}</Button>
           ) : (
-            <Link href="/app/nova-vistoria">
-              <Button>{t("historico.createFirst")}</Button>
-            </Link>
+            <Link href="/app/nova-vistoria"><Button>{t("historico.createFirst")}</Button></Link>
           )}
         </div>
       ) : (
@@ -106,16 +157,15 @@ export default function HistoricoPage() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="space-y-2 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="bg-background text-xs font-normal">
-                          {inspection.tipo}
-                        </Badge>
+                        <Badge variant="outline" className="bg-background text-xs font-normal">{inspection.tipo}</Badge>
                         <Badge variant="outline" className={`${getUrgenciaColor(inspection.urgencia)} text-xs font-semibold uppercase tracking-wider`}>
                           {getUrgenciaLabel(inspection.urgencia)}
                         </Badge>
+                        <Badge variant="outline" className={`${STATUS_COLORS[inspection.status] || ""} text-xs`}>
+                          {getStatusLabel(inspection.status)}
+                        </Badge>
                       </div>
-                      <h3 className="font-semibold text-base sm:text-lg text-foreground line-clamp-2 leading-tight">
-                        {inspection.resumo}
-                      </h3>
+                      <h3 className="font-semibold text-base sm:text-lg text-foreground line-clamp-2 leading-tight">{inspection.resumo}</h3>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3.5 w-3.5" />
@@ -124,9 +174,7 @@ export default function HistoricoPage() {
                         {(inspection.local || inspection.condominio) && (
                           <div className="flex items-center gap-1.5 truncate">
                             <span className="hidden sm:inline text-border">•</span>
-                            <span className="truncate">
-                              {[inspection.local, inspection.condominio].filter(Boolean).join(" — ")}
-                            </span>
+                            <span className="truncate">{[inspection.local, inspection.condominio].filter(Boolean).join(" — ")}</span>
                           </div>
                         )}
                       </div>

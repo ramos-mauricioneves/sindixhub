@@ -6,8 +6,6 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type GenerateReportBody = {
-  audio: Blob;
-  images?: Blob[];
-  notes?: string;
+export type AddUserCondominio200 = {
+  ok: boolean;
 };

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -13,6 +13,9 @@ export const inspectionsTable = pgTable("inspections", {
   analise_imagens: text("analise_imagens"),
   local: text("local"),
   condominio: text("condominio"),
+  status: text("status").notNull().default("gerado"),
+  condominioId: integer("condominio_id"),
+  areaId: integer("area_id"),
   createdByClerkId: text("created_by_clerk_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

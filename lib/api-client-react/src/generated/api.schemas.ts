@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 export interface HealthStatus {
   status: string;
@@ -47,6 +47,20 @@ export interface SaveInspectionBody {
   analise_imagens?: string;
   local?: string;
   condominio?: string;
+  condominioId?: number;
+  areaId?: number;
+}
+
+export type UpdateInspectionStatusBodyStatus =
+  (typeof UpdateInspectionStatusBodyStatus)[keyof typeof UpdateInspectionStatusBodyStatus];
+
+export const UpdateInspectionStatusBodyStatus = {
+  pronto_para_envio: "pronto_para_envio",
+  enviado: "enviado",
+} as const;
+
+export interface UpdateInspectionStatusBody {
+  status: UpdateInspectionStatusBodyStatus;
 }
 
 export type SavedInspectionUrgencia =
@@ -56,6 +70,16 @@ export const SavedInspectionUrgencia = {
   baixa: "baixa",
   média: "média",
   alta: "alta",
+} as const;
+
+export type SavedInspectionStatus =
+  (typeof SavedInspectionStatus)[keyof typeof SavedInspectionStatus];
+
+export const SavedInspectionStatus = {
+  rascunho: "rascunho",
+  gerado: "gerado",
+  pronto_para_envio: "pronto_para_envio",
+  enviado: "enviado",
 } as const;
 
 export interface SavedInspection {
@@ -69,6 +93,9 @@ export interface SavedInspection {
   analise_imagens?: string;
   local?: string;
   condominio?: string;
+  status: SavedInspectionStatus;
+  condominioId?: number;
+  areaId?: number;
   createdByClerkId: string;
   createdAt: string;
 }
@@ -96,6 +123,7 @@ export interface UserProfile {
   name?: string;
   role: UserProfileRole;
   condominio?: string;
+  condominioIds?: number[];
   createdAt: string;
 }
 
@@ -113,6 +141,55 @@ export interface UpdateUserRoleBody {
   condominio?: string;
 }
 
+export interface UserCondominioBody {
+  condominioId: number;
+}
+
+export interface Condominio {
+  id: number;
+  nome: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  ativo: boolean;
+  createdAt: string;
+}
+
+export interface CondominioBody {
+  nome: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  ativo?: boolean;
+}
+
+export type AreaTipo = (typeof AreaTipo)[keyof typeof AreaTipo];
+
+export const AreaTipo = {
+  comum: "comum",
+  predial: "predial",
+} as const;
+
+export interface Area {
+  id: number;
+  condominioId: number;
+  nome: string;
+  tipo: AreaTipo;
+  createdAt: string;
+}
+
+export type AreaBodyTipo = (typeof AreaBodyTipo)[keyof typeof AreaBodyTipo];
+
+export const AreaBodyTipo = {
+  comum: "comum",
+  predial: "predial",
+} as const;
+
+export interface AreaBody {
+  nome: string;
+  tipo: AreaBodyTipo;
+}
+
 export interface ErrorResponse {
   error: string;
   details?: string;
@@ -128,6 +205,9 @@ export type ListInspectionsParams = {
   page?: number;
   limit?: number;
   urgencia?: ListInspectionsUrgencia;
+  status?: ListInspectionsStatus;
+  condominioId?: number;
+  areaId?: number;
 };
 
 export type ListInspectionsUrgencia =
@@ -138,3 +218,25 @@ export const ListInspectionsUrgencia = {
   média: "média",
   alta: "alta",
 } as const;
+
+export type ListInspectionsStatus =
+  (typeof ListInspectionsStatus)[keyof typeof ListInspectionsStatus];
+
+export const ListInspectionsStatus = {
+  rascunho: "rascunho",
+  gerado: "gerado",
+  pronto_para_envio: "pronto_para_envio",
+  enviado: "enviado",
+} as const;
+
+export type AddUserCondominio200 = {
+  ok: boolean;
+};
+
+export type RemoveUserCondominio200 = {
+  ok: boolean;
+};
+
+export type DeleteArea200 = {
+  ok: boolean;
+};

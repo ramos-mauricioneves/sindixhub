@@ -1,0 +1,360 @@
+# 🚀 Plataforma de Vistorias Condominiais com IA — Versão com Papéis e Permissões
+
+---
+
+# 🎯 Objetivo
+
+Construir uma aplicação web com:
+
+* Gestão de condomínios
+* Estrutura de áreas de vistoria
+* Criação de vistorias com IA
+* Controle de permissões por perfil
+* Fluxo simples e funcional
+
+---
+
+# 👥 PAPÉIS DO SISTEMA (ATUALIZADO)
+
+## 1. Administrador (GLOBAL)
+
+Permissões:
+
+* Acesso total ao sistema
+* Criar / editar / excluir:
+
+  * condomínios
+  * usuários
+  * áreas
+* Visualizar todas as vistorias
+* Gerenciar associação de usuários aos condomínios
+
+👉 Escopo: GLOBAL (multi-condomínio)
+
+---
+
+## 2. Síndico (POR CONDOMÍNIO)
+
+Regras:
+
+* Pode estar associado a 1 ou mais condomínios
+* Tem controle total DENTRO dos condomínios vinculados
+
+Permissões:
+
+* Criar e editar:
+
+  * áreas do condomínio
+  * vistorias
+* Gerar comunicados com IA
+* Visualizar todas as vistorias do(s) condomínio(s)
+* Enviar comunicados
+
+Restrições:
+
+* ❌ NÃO pode excluir o condomínio
+* ❌ NÃO pode acessar outros condomínios
+* ❌ NÃO pode gerenciar usuários globais
+
+---
+
+## 3. Vistoriador (OPERACIONAL)
+
+Regras:
+
+* Pode estar associado a 1 ou mais condomínios
+* Papel focado em execução
+
+Permissões:
+
+* Criar vistorias
+* Upload de:
+
+  * áudio
+  * imagens
+* Gerar comunicado via IA
+* Editar suas próprias vistorias
+
+Restrições:
+
+* ❌ NÃO pode excluir vistoria de outros usuários
+* ❌ NÃO pode alterar áreas
+* ❌ NÃO pode enviar comunicados para moradores
+* ❌ NÃO pode acessar dados administrativos
+
+---
+
+# 🧩 MODELO DE USUÁRIO
+
+User:
+{
+id,
+nome,
+email,
+role (admin | sindico | vistoriador),
+condominios_ids[]
+}
+
+---
+
+# 🏢 CONDOMÍNIOS
+
+Condominio:
+{
+id,
+nome,
+endereco,
+cidade,
+estado,
+ativo
+}
+
+---
+
+# 🏗️ ÁREAS DE VISTORIA
+
+Area:
+{
+id,
+condominio_id,
+nome,
+tipo (comum | predial)
+}
+
+---
+
+## Tipos sugeridos
+
+### Comum:
+
+* Academia
+* Piscina
+* Playground
+* Salão de festas
+* Hall social
+* Garagem
+* Elevador
+
+### Predial:
+
+* Fachada
+* Pintura
+* Estrutura
+* Rachaduras
+* Acabamento
+* Telhado
+
+---
+
+# 📝 VISTORIAS
+
+Vistoria:
+{
+id,
+condominio_id,
+area_id,
+criado_por,
+tipo_area,
+status,
+data_criacao,
+audio_url,
+imagens[],
+observacoes,
+resultado_ia
+}
+
+---
+
+## Status
+
+* rascunho
+* gerado
+* pronto_para_envio
+* enviado
+
+---
+
+# 🤖 IA (mantém arquitetura atual)
+
+## Pipeline:
+
+### 1. OpenAI
+
+* Transcrição de áudio
+* Análise de imagens
+
+### 2. Claude
+
+* Classificação
+* Geração do comunicado
+
+---
+
+## Output esperado:
+
+{
+"tipo_problema": "...",
+"gravidade": "...",
+"area_detectada": "...",
+"recomendacao": "...",
+"resumo": "...",
+"comunicado": "..."
+}
+
+---
+
+# 🔄 FLUXO DA VISTORIA
+
+## Vistoriador ou Síndico:
+
+1. Seleciona condomínio
+2. Seleciona área
+3. Envia:
+
+   * áudio
+   * imagens
+   * observações
+4. Clica em "Gerar comunicado"
+
+---
+
+## Sistema:
+
+* Processa IA
+* Retorna resultado estruturado
+
+---
+
+## Pós-processamento:
+
+### Vistoriador:
+
+* pode salvar
+* NÃO pode enviar
+
+### Síndico:
+
+* pode:
+
+  * editar comunicado
+  * enviar para moradores
+
+---
+
+# 📤 ENVIO
+
+Botão:
+
+"Enviar comunicado"
+
+Regra:
+
+* disponível apenas para Síndico
+
+---
+
+# 📊 DASHBOARD
+
+## Admin:
+
+* visão global
+* todos condomínios
+* métricas gerais
+
+## Síndico:
+
+* vistorias do(s) condomínio(s)
+* status
+
+## Vistoriador:
+
+* apenas suas vistorias
+
+---
+
+# 🔎 FILTROS
+
+* condomínio
+* área
+* status
+* usuário
+* data
+
+---
+
+# 💾 BANCO (SQLite)
+
+Tabelas:
+
+* users
+* condominios
+* user_condominios (N:N)
+* areas
+* vistorias
+
+---
+
+# 🔐 REGRAS DE ACESSO (IMPORTANTE)
+
+Sempre validar:
+
+* usuário pertence ao condomínio
+* role permite ação
+
+---
+
+# 🧩 FRONTEND
+
+Telas:
+
+1. Login simples (mock)
+2. Dashboard
+3. Lista de condomínios
+4. Gestão de áreas
+5. Nova vistoria
+6. Lista de vistorias
+7. Detalhe da vistoria
+
+---
+
+# 🏗️ BACKEND (FastAPI)
+
+Rotas:
+
+/auth (mock)
+/condominios
+/areas
+/vistorias
+
+---
+
+# 🚀 RESULTADO FINAL
+
+Sistema com:
+
+✔ multi-condomínio
+✔ controle por perfil
+✔ fluxo de vistoria completo
+✔ IA integrada
+✔ pronto para envio futuro via WhatsApp
+
+---
+
+# ⚠️ PRIORIDADE
+
+1. Modelo de usuários + permissões
+2. CRUD condomínios
+3. CRUD áreas
+4. Criação de vistoria
+5. IA funcionando
+
+---
+
+# 🔥 IMPORTANTE
+
+* manter simples
+* foco funcional
+* não overengineer
+* garantir regras de acesso corretas
+
+---

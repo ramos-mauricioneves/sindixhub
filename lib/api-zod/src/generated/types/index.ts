@@ -3,9 +3,17 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 
+export * from "./addUserCondominio200";
+export * from "./area";
+export * from "./areaBody";
+export * from "./areaBodyTipo";
+export * from "./areaTipo";
+export * from "./condominio";
+export * from "./condominioBody";
+export * from "./deleteArea200";
 export * from "./errorResponse";
 export * from "./generateReportBody";
 export * from "./healthStatus";
@@ -13,12 +21,18 @@ export * from "./inspectionListResponse";
 export * from "./inspectionReport";
 export * from "./inspectionReportUrgencia";
 export * from "./listInspectionsParams";
+export * from "./listInspectionsStatus";
 export * from "./listInspectionsUrgencia";
+export * from "./removeUserCondominio200";
 export * from "./savedInspection";
+export * from "./savedInspectionStatus";
 export * from "./savedInspectionUrgencia";
 export * from "./saveInspectionBody";
 export * from "./saveInspectionBodyUrgencia";
+export * from "./updateInspectionStatusBody";
+export * from "./updateInspectionStatusBodyStatus";
 export * from "./updateUserRoleBody";
 export * from "./updateUserRoleBodyRole";
+export * from "./userCondominioBody";
 export * from "./userProfile";
 export * from "./userProfileRole";

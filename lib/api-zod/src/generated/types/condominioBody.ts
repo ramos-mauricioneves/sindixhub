@@ -6,8 +6,10 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type GenerateReportBody = {
-  audio: Blob;
-  images?: Blob[];
-  notes?: string;
-};
+export interface CondominioBody {
+  nome: string;
+  endereco?: string;
+  cidade?: string;
+  estado?: string;
+  ativo?: boolean;
+}

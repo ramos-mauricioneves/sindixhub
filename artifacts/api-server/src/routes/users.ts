@@ -1,39 +1,45 @@
 import { Router } from "express";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, userCondominiosTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { requireAuth, requireRole, upsertUser } from "../middlewares/requireAuth";
 import { UpdateUserRoleBody } from "@workspace/api-zod";
 
 const router = Router();
 
-router.get("/users/me", requireAuth, async (req, res): Promise<void> => {
-  const auth = req.auth!;
-  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
-  const name = (auth as any).sessionClaims?.name as string | undefined;
+async function getCondominioIds(userId: number): Promise<number[]> {
+  const rows = await db.select().from(userCondominiosTable).where(eq(userCondominiosTable.userId, userId));
+  return rows.map(r => r.condominioId);
+}
 
-  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
-  res.json({
-    id: user.id,
-    clerkId: user.clerkId,
-    email: user.email,
-    name: user.name,
-    role: user.role,
-    condominio: user.condominio,
-    createdAt: user.createdAt,
-  });
-});
-
-router.get("/users", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
-  const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
-  res.json(users.map((u) => ({
+function formatUser(u: typeof usersTable.$inferSelect, condominioIds: number[]) {
+  return {
     id: u.id,
     clerkId: u.clerkId,
     email: u.email,
     name: u.name,
     role: u.role,
     condominio: u.condominio,
+    condominioIds,
     createdAt: u.createdAt,
-  })));
+  };
+}
+
+router.get("/users/me", requireAuth, async (req, res): Promise<void> => {
+  const auth = req.auth!;
+  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
+  const name = (auth as any).sessionClaims?.name as string | undefined;
+  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+  const condominioIds = await getCondominioIds(user.id);
+  res.json(formatUser(user, condominioIds));
+});
+
+router.get("/users", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
+  const users = await db.select().from(usersTable).orderBy(usersTable.createdAt);
+  const result = await Promise.all(users.map(async (u) => {
+    const condominioIds = await getCondominioIds(u.id);
+    return formatUser(u, condominioIds);
+  }));
+  res.json(result);
 });
 
 router.patch("/users/:clerkId/role", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
@@ -47,10 +53,7 @@ router.patch("/users/:clerkId/role", requireAuth, requireRole("admin"), async (r
 
   const [updated] = await db
     .update(usersTable)
-    .set({
-      role: parsed.data.role,
-      condominio: parsed.data.condominio ?? null,
-    })
+    .set({ role: parsed.data.role, condominio: parsed.data.condominio ?? null })
     .where(eq(usersTable.clerkId, clerkId))
     .returning();
 
@@ -59,15 +62,8 @@ router.patch("/users/:clerkId/role", requireAuth, requireRole("admin"), async (r
     return;
   }
 
-  res.json({
-    id: updated.id,
-    clerkId: updated.clerkId,
-    email: updated.email,
-    name: updated.name,
-    role: updated.role,
-    condominio: updated.condominio,
-    createdAt: updated.createdAt,
-  });
+  const condominioIds = await getCondominioIds(updated.id);
+  res.json(formatUser(updated, condominioIds));
 });
 
 export default router;

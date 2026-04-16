@@ -3,12 +3,16 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
+import type { ListInspectionsStatus } from "./listInspectionsStatus";
 import type { ListInspectionsUrgencia } from "./listInspectionsUrgencia";
 
 export type ListInspectionsParams = {
   page?: number;
   limit?: number;
   urgencia?: ListInspectionsUrgencia;
+  status?: ListInspectionsStatus;
+  condominioId?: number;
+  areaId?: number;
 };

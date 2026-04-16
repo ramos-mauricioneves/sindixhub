@@ -1,0 +1,232 @@
+## 🧩 Funcionalidades do Sistema (visão modular)
+
+---
+
+### 🏗️ 1. Core — Gestão de Ativos (CMDB Condominial)
+
+* **Ativos**
+
+  * Cadastro de ativos por condomínio
+  * Associação com áreas
+  * Classificação por tipo (equipamento, estrutura, sistema)
+  * Definição de criticidade
+  * Status operacional
+
+* **Áreas**
+
+  * Cadastro e organização por tipo (comum / predial)
+  * Vinculação com ativos
+
+* **Histórico do Ativo**
+
+  * Timeline de eventos
+  * Últimas ocorrências
+  * Evolução de status
+
+---
+
+### 🔁 2. Eventos (Base do Sistema)
+
+* **Tipos de Evento**
+
+  * Vistoria
+  * Manutenção
+  * Incidente
+  * Melhoria
+
+* **Registro de Evento**
+
+  * Upload de áudio
+  * Upload de imagens
+  * Observações
+  * Associação automática/manual ao ativo
+
+* **Classificação Inteligente**
+
+  * Tipo de problema
+  * Gravidade
+  * Impacto
+  * Recomendação
+
+---
+
+### 🔍 3. Módulo de Vistorias
+
+* **Criação de Vistoria**
+
+  * Seleção (ou sugestão automática) de ativo
+  * Entrada multimodal (áudio + imagem + texto)
+
+* **Vistoria Assistida por IA**
+
+  * Identificação automática do ativo
+  * Classificação do problema
+  * Sugestão de ação
+
+* **Gestão de Vistorias**
+
+  * Lista e filtros
+  * Histórico por ativo
+  * Edição de registros
+
+---
+
+### 🔧 4. Módulo de Manutenção
+
+* **Ordem de Serviço**
+
+  * Geração manual
+  * Geração automática via IA
+
+* **Tipos de Manutenção**
+
+  * Preventiva
+  * Corretiva
+
+* **Agenda de Manutenção**
+
+  * Programação por ativo
+  * Histórico técnico
+
+* **Recomendações Inteligentes**
+
+  * Sugestão de manutenção preventiva
+  * Priorização baseada em risco
+
+---
+
+### 🏗️ 5. Módulo de Melhorias
+
+* **Gestão de Melhorias**
+
+  * Cadastro de propostas
+  * Vinculação com ativos
+
+* **Análise de Necessidade**
+
+  * Baseada em histórico de eventos
+  * Identificação de recorrência de problemas
+
+* **Estimativas**
+
+  * Custo
+  * Impacto operacional
+
+* **Sugestão por IA**
+
+  * Recomendação de melhorias estruturais
+  * Justificativa automática
+
+---
+
+### 🗳️ 6. Módulo de Assembleias e Aprovações
+
+* **Gestão de Pautas**
+
+  * Criação manual
+  * Sugestão automática via IA
+
+* **Itens de Votação**
+
+  * Melhorias
+  * Intervenções em ativos
+
+* **Registro de Decisões**
+
+  * Aprovações/reprovações
+  * Histórico de deliberações
+
+* **Resumo Inteligente**
+
+  * Síntese automática das decisões
+
+---
+
+### 📊 7. Módulo de Inteligência
+
+* **Score de Ativos**
+
+  * Saúde (0–100)
+  * Risco
+  * Tendência
+
+* **Score do Condomínio**
+
+  * Risco geral
+  * Áreas críticas
+
+* **Detecção de Padrões**
+
+  * Problemas recorrentes
+  * Falhas frequentes
+
+* **Análise de Tendência**
+
+  * Melhora / estabilidade / piora
+
+---
+
+### 🧠 8. Módulo de Decisão
+
+* **Priorização Automática**
+
+  * Ranking de urgência
+  * Baseado em risco e impacto
+
+* **Sugestões de Ação**
+
+  * Monitorar
+  * Manter
+  * Reparar
+  * Substituir
+
+* **Impacto**
+
+  * Operacional
+  * Financeiro (estimado)
+
+---
+
+### 📱 9. Experiência do Usuário (Síndico / Vistoriador)
+
+* **Visão Geral**
+
+  * Ativos críticos
+  * Alertas recentes
+  * Ações recomendadas
+
+* **Operação Simplificada**
+
+  * Registro rápido via áudio
+  * Baixa fricção
+
+* **Foco em Decisão**
+
+  * Interface orientada a ações
+  * Não apenas dados
+
+---
+
+### 🔗 10. Integrações (Preparação futura)
+
+* **Prestadores de Serviço**
+
+  * Geração de ordens de serviço
+
+* **Comunicação**
+
+  * Envio via WhatsApp (futuro)
+
+* **Financeiro**
+
+  * Integração opcional futura
+
+---
+
+### ⚙️ Diretrizes Gerais
+
+* Arquitetura modular
+* Ativo como entidade central
+* Evento como unidade de registro
+* IA como camada de inteligência
+* UX simples e mobile-first

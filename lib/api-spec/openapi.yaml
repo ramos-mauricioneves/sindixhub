@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.2.0
+  version: 0.3.0
   description: API specification for Assistente de Vistoria Condominial
 servers:
   - url: /api
@@ -16,6 +16,10 @@ tags:
     description: User management
   - name: inspections
     description: Inspection history
+  - name: condominios
+    description: Condominium management
+  - name: areas
+    description: Inspection area management
 paths:
   /healthz:
     get:
@@ -95,6 +99,19 @@ paths:
           schema:
             type: string
             enum: [baixa, média, alta]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [rascunho, gerado, pronto_para_envio, enviado]
+        - name: condominioId
+          in: query
+          schema:
+            type: integer
+        - name: areaId
+          in: query
+          schema:
+            type: integer
       responses:
         "200":
           description: List of inspections
@@ -158,6 +175,37 @@ paths:
                 $ref: "#/components/schemas/SavedInspection"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inspections/{id}/status:
+    patch:
+      operationId: updateInspectionStatus
+      tags: [inspections]
+      summary: Update inspection status (sindico only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateInspectionStatusBody"
+      responses:
+        "200":
+          description: Status updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedInspection"
+        "403":
+          description: Forbidden
           content:
             application/json:
               schema:
@@ -240,6 +288,231 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /users/{clerkId}/condominios:
+    get:
+      operationId: getUserCondominios
+      tags: [users]
+      summary: Get condominios associated with a user
+      parameters:
+        - name: clerkId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User condominios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Condominio"
+    post:
+      operationId: addUserCondominio
+      tags: [users]
+      summary: Associate a user with a condominio (admin only)
+      parameters:
+        - name: clerkId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCondominioBody"
+      responses:
+        "200":
+          description: Association created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /users/{clerkId}/condominios/{condominioId}:
+    delete:
+      operationId: removeUserCondominio
+      tags: [users]
+      summary: Remove user from a condominio (admin only)
+      parameters:
+        - name: clerkId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Association removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /condominios:
+    get:
+      operationId: listCondominios
+      tags: [condominios]
+      summary: List condominios accessible to the current user
+      responses:
+        "200":
+          description: List of condominios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Condominio"
+    post:
+      operationId: createCondominio
+      tags: [condominios]
+      summary: Create a condominio (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CondominioBody"
+      responses:
+        "201":
+          description: Condominio created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Condominio"
+
+  /condominios/{id}:
+    get:
+      operationId: getCondominio
+      tags: [condominios]
+      summary: Get a single condominio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Condominio details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Condominio"
+    patch:
+      operationId: updateCondominio
+      tags: [condominios]
+      summary: Update a condominio (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CondominioBody"
+      responses:
+        "200":
+          description: Condominio updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Condominio"
+
+  /condominios/{condominioId}/areas:
+    get:
+      operationId: listAreas
+      tags: [areas]
+      summary: List areas for a condominio
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of areas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Area"
+    post:
+      operationId: createArea
+      tags: [areas]
+      summary: Create area (admin or sindico)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AreaBody"
+      responses:
+        "201":
+          description: Area created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Area"
+
+  /condominios/{condominioId}/areas/{areaId}:
+    delete:
+      operationId: deleteArea
+      tags: [areas]
+      summary: Delete an area (admin or sindico)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: areaId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Area deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
 components:
   schemas:
     HealthStatus:
@@ -297,12 +570,25 @@ components:
           type: string
         condominio:
           type: string
+        condominioId:
+          type: integer
+        areaId:
+          type: integer
       required:
         - tipo
         - urgencia
         - acao
         - resumo
         - comunicado
+
+    UpdateInspectionStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pronto_para_envio, enviado]
+      required:
+        - status
 
     SavedInspection:
       type: object
@@ -328,6 +614,13 @@ components:
           type: string
         condominio:
           type: string
+        status:
+          type: string
+          enum: [rascunho, gerado, pronto_para_envio, enviado]
+        condominioId:
+          type: integer
+        areaId:
+          type: integer
         createdByClerkId:
           type: string
         createdAt:
@@ -340,6 +633,7 @@ components:
         - acao
         - resumo
         - comunicado
+        - status
         - createdByClerkId
         - createdAt
 
@@ -378,6 +672,10 @@ components:
           enum: [admin, sindico, vistoriador]
         condominio:
           type: string
+        condominioIds:
+          type: array
+          items:
+            type: integer
         createdAt:
           type: string
           format: date-time
@@ -398,6 +696,88 @@ components:
           type: string
       required:
         - role
+
+    UserCondominioBody:
+      type: object
+      properties:
+        condominioId:
+          type: integer
+      required:
+        - condominioId
+
+    Condominio:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        endereco:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        ativo:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nome
+        - ativo
+        - createdAt
+
+    CondominioBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        endereco:
+          type: string
+        cidade:
+          type: string
+        estado:
+          type: string
+        ativo:
+          type: boolean
+      required:
+        - nome
+
+    Area:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+          enum: [comum, predial]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - nome
+        - tipo
+        - createdAt
+
+    AreaBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        tipo:
+          type: string
+          enum: [comum, predial]
+      required:
+        - nome
+        - tipo
 
     ErrorResponse:
       type: object

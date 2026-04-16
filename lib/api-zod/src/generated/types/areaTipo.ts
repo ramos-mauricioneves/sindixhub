@@ -6,8 +6,9 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export type GenerateReportBody = {
-  audio: Blob;
-  images?: Blob[];
-  notes?: string;
-};
+export type AreaTipo = (typeof AreaTipo)[keyof typeof AreaTipo];
+
+export const AreaTipo = {
+  comum: "comum",
+  predial: "predial",
+} as const;

@@ -5,9 +5,12 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.3.0
  */
+import type { AreaTipo } from "./areaTipo";
 
-export type GenerateReportBody = {
-  audio: Blob;
-  images?: Blob[];
-  notes?: string;
-};
+export interface Area {
+  id: number;
+  condominioId: number;
+  nome: string;
+  tipo: AreaTipo;
+  createdAt: Date;
+}

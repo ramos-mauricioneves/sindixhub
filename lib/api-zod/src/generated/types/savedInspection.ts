@@ -3,8 +3,9 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
+import type { SavedInspectionStatus } from "./savedInspectionStatus";
 import type { SavedInspectionUrgencia } from "./savedInspectionUrgencia";
 
 export interface SavedInspection {
@@ -18,6 +19,9 @@ export interface SavedInspection {
   analise_imagens?: string;
   local?: string;
   condominio?: string;
+  status: SavedInspectionStatus;
+  condominioId?: number;
+  areaId?: number;
   createdByClerkId: string;
   createdAt: Date;
 }

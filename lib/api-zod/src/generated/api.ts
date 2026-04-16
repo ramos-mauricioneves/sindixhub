@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.2.0
+ * OpenAPI spec version: 0.3.0
  */
 import * as zod from "zod";
 
@@ -43,6 +43,11 @@ export const ListInspectionsQueryParams = zod.object({
   page: zod.coerce.number().default(listInspectionsQueryPageDefault),
   limit: zod.coerce.number().default(listInspectionsQueryLimitDefault),
   urgencia: zod.enum(["baixa", "média", "alta"]).optional(),
+  status: zod
+    .enum(["rascunho", "gerado", "pronto_para_envio", "enviado"])
+    .optional(),
+  condominioId: zod.coerce.number().optional(),
+  areaId: zod.coerce.number().optional(),
 });
 
 export const ListInspectionsResponse = zod.object({
@@ -58,6 +63,9 @@ export const ListInspectionsResponse = zod.object({
       analise_imagens: zod.string().optional(),
       local: zod.string().optional(),
       condominio: zod.string().optional(),
+      status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
+      condominioId: zod.number().optional(),
+      areaId: zod.number().optional(),
       createdByClerkId: zod.string(),
       createdAt: zod.coerce.date(),
     }),
@@ -80,6 +88,8 @@ export const SaveInspectionBody = zod.object({
   analise_imagens: zod.string().optional(),
   local: zod.string().optional(),
   condominio: zod.string().optional(),
+  condominioId: zod.number().optional(),
+  areaId: zod.number().optional(),
 });
 
 /**
@@ -100,6 +110,38 @@ export const GetInspectionResponse = zod.object({
   analise_imagens: zod.string().optional(),
   local: zod.string().optional(),
   condominio: zod.string().optional(),
+  status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
+  condominioId: zod.number().optional(),
+  areaId: zod.number().optional(),
+  createdByClerkId: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update inspection status (sindico only)
+ */
+export const UpdateInspectionStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateInspectionStatusBody = zod.object({
+  status: zod.enum(["pronto_para_envio", "enviado"]),
+});
+
+export const UpdateInspectionStatusResponse = zod.object({
+  id: zod.number(),
+  tipo: zod.string(),
+  urgencia: zod.enum(["baixa", "média", "alta"]),
+  acao: zod.string(),
+  resumo: zod.string(),
+  comunicado: zod.string(),
+  transcricao: zod.string().optional(),
+  analise_imagens: zod.string().optional(),
+  local: zod.string().optional(),
+  condominio: zod.string().optional(),
+  status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
+  condominioId: zod.number().optional(),
+  areaId: zod.number().optional(),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -114,6 +156,7 @@ export const GetMeResponse = zod.object({
   name: zod.string().optional(),
   role: zod.enum(["admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
+  condominioIds: zod.array(zod.number()).optional(),
   createdAt: zod.coerce.date(),
 });
 
@@ -127,6 +170,7 @@ export const ListUsersResponseItem = zod.object({
   name: zod.string().optional(),
   role: zod.enum(["admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
+  condominioIds: zod.array(zod.number()).optional(),
   createdAt: zod.coerce.date(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
@@ -150,5 +194,160 @@ export const UpdateUserRoleResponse = zod.object({
   name: zod.string().optional(),
   role: zod.enum(["admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
+  condominioIds: zod.array(zod.number()).optional(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get condominios associated with a user
+ */
+export const GetUserCondominiosParams = zod.object({
+  clerkId: zod.coerce.string(),
+});
+
+export const GetUserCondominiosResponseItem = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  endereco: zod.string().optional(),
+  cidade: zod.string().optional(),
+  estado: zod.string().optional(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const GetUserCondominiosResponse = zod.array(
+  GetUserCondominiosResponseItem,
+);
+
+/**
+ * @summary Associate a user with a condominio (admin only)
+ */
+export const AddUserCondominioParams = zod.object({
+  clerkId: zod.coerce.string(),
+});
+
+export const AddUserCondominioBody = zod.object({
+  condominioId: zod.number(),
+});
+
+export const AddUserCondominioResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Remove user from a condominio (admin only)
+ */
+export const RemoveUserCondominioParams = zod.object({
+  clerkId: zod.coerce.string(),
+  condominioId: zod.coerce.number(),
+});
+
+export const RemoveUserCondominioResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List condominios accessible to the current user
+ */
+export const ListCondominiosResponseItem = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  endereco: zod.string().optional(),
+  cidade: zod.string().optional(),
+  estado: zod.string().optional(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListCondominiosResponse = zod.array(ListCondominiosResponseItem);
+
+/**
+ * @summary Create a condominio (admin only)
+ */
+export const CreateCondominioBody = zod.object({
+  nome: zod.string(),
+  endereco: zod.string().optional(),
+  cidade: zod.string().optional(),
+  estado: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+/**
+ * @summary Get a single condominio
+ */
+export const GetCondominioParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetCondominioResponse = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  endereco: zod.string().optional(),
+  cidade: zod.string().optional(),
+  estado: zod.string().optional(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a condominio (admin only)
+ */
+export const UpdateCondominioParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCondominioBody = zod.object({
+  nome: zod.string(),
+  endereco: zod.string().optional(),
+  cidade: zod.string().optional(),
+  estado: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+export const UpdateCondominioResponse = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  endereco: zod.string().optional(),
+  cidade: zod.string().optional(),
+  estado: zod.string().optional(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List areas for a condominio
+ */
+export const ListAreasParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const ListAreasResponseItem = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  nome: zod.string(),
+  tipo: zod.enum(["comum", "predial"]),
+  createdAt: zod.coerce.date(),
+});
+export const ListAreasResponse = zod.array(ListAreasResponseItem);
+
+/**
+ * @summary Create area (admin or sindico)
+ */
+export const CreateAreaParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const CreateAreaBody = zod.object({
+  nome: zod.string(),
+  tipo: zod.enum(["comum", "predial"]),
+});
+
+/**
+ * @summary Delete an area (admin or sindico)
+ */
+export const DeleteAreaParams = zod.object({
+  condominioId: zod.coerce.number(),
+  areaId: zod.coerce.number(),
+});
+
+export const DeleteAreaResponse = zod.object({
+  ok: zod.boolean(),
 });

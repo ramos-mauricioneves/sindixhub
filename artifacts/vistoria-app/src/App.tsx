@@ -11,6 +11,7 @@ import NovaVistoriaPage from "@/pages/nova-vistoria";
 import HistoricoPage from "@/pages/historico";
 import VistoriaDetailPage from "@/pages/vistoria-detail";
 import AdminPage from "@/pages/admin";
+import CondominiosPage from "@/pages/condominios";
 import Layout from "@/components/layout";
 
 const queryClient = new QueryClient({
@@ -98,6 +99,7 @@ function ClerkProviderWithRoutes() {
                   <Route path="/app/historico" component={HistoricoPage} />
                   <Route path="/app/vistoria/:id" component={VistoriaDetailPage} />
                   <Route path="/app/admin" component={AdminPage} />
+                  <Route path="/app/condominios" component={CondominiosPage} />
                   <Route component={NotFound} />
                 </Switch>
               </Layout>

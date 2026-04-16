@@ -51,10 +51,11 @@ React + Vite mobile-first frontend for a condominium inspection assistant. Build
 **Pages:**
 - `/` — Landing page (signed-out) or role-based redirect (signed-in)
 - `/sign-in`, `/sign-up` — Clerk auth pages
-- `/app/nova-vistoria` — Create new inspection (MediaRecorder audio + camera capture)
-- `/app/historico` — Inspection history with urgência filter
-- `/app/vistoria/:id` — Inspection detail with copy/WhatsApp buttons
+- `/app/nova-vistoria` — Create new inspection (MediaRecorder audio + camera capture; includes condomínio + área selectors)
+- `/app/historico` — Inspection history with urgência, status, and condomínio filters; status badges on cards
+- `/app/vistoria/:id` — Inspection detail with copy/WhatsApp buttons + status badge; síndico/admin can advance status (gerado → pronto_para_envio → enviado)
 - `/app/admin` — Admin user management panel
+- `/app/condominios` — Admin-only condominium CRUD + area management (inline expandable)
 
 **Mobile features:**
 - MediaRecorder API for in-browser audio recording (NOT file upload)
@@ -71,9 +72,20 @@ Express 5 backend with Clerk authentication middleware.
 - `GET /api/users/me` — get/create current user profile
 - `GET /api/users` — list all users (admin only)
 - `PATCH /api/users/:clerkId/role` — update user role/condominio (admin only)
-- `GET /api/inspections` — list inspections (scoped by role)
-- `POST /api/inspections` — save inspection record
+- `GET /api/inspections` — list inspections (scoped by role; filters: urgencia, status, condominioId, areaId)
+- `POST /api/inspections` — save inspection record (accepts condominioId, areaId)
 - `GET /api/inspections/:id` — get single inspection
+- `PATCH /api/inspections/:id/status` — update status (sindico/admin only; gerado→pronto_para_envio→enviado)
+- `GET /api/condominios` — list condominiums
+- `POST /api/condominios` — create condominium (admin only)
+- `GET /api/condominios/:id` — get single condominium
+- `PATCH /api/condominios/:id` — update condominium (admin only)
+- `GET /api/condominios/:id/areas` — list areas for condominium
+- `POST /api/condominios/:id/areas` — add area to condominium
+- `DELETE /api/condominios/:id/areas/:areaId` — remove area
+- `GET /api/users/:clerkId/condominios` — get user's condominium associations
+- `POST /api/users/:clerkId/condominios` — assign user to condominium (admin only)
+- `DELETE /api/users/:clerkId/condominios/:condominioId` — remove user from condominium (admin only)
 
 **Services:**
 - `src/services/openai-service.ts` — audio transcription (Whisper) + image analysis (GPT-4o Vision)
@@ -86,7 +98,13 @@ Express 5 backend with Clerk authentication middleware.
 ## Database Schema (`lib/db`)
 
 - `usersTable` — clerkId, email, name, role (admin|sindico|vistoriador), condominio, createdAt
-- `inspectionsTable` — tipo, urgencia, acao, resumo, comunicado, transcricao, analise_imagens, local, condominio, createdByClerkId, createdAt
+- `inspectionsTable` — tipo, urgencia, acao, resumo, comunicado, transcricao, analise_imagens, local, condominio, status (gerado|pronto_para_envio|enviado, default: gerado), condominioId (FK), areaId (FK), createdByClerkId, createdAt
+- `condominiosTable` — nome, endereco, cidade, estado, ativo, createdAt
+- `areasTable` — condominioId (FK), nome, tipo (comum|predial), createdAt
+- `userCondominiosTable` — clerkId (FK), condominioId (FK) — many-to-many for síndico access scoping
+
+**Inspection Status Workflow:**
+`gerado` (default, created by AI) → `pronto_para_envio` (ready to send, set by síndico/admin) → `enviado` (sent, set by síndico/admin)
 
 ## API Spec (`lib/api-spec`)
 

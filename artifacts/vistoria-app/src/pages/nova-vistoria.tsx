@@ -2,15 +2,21 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle } from "lucide-react";
+import { Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useGenerateReport, useSaveInspection, getListInspectionsQueryKey, InspectionReport } from "@workspace/api-client-react";
+import {
+  useGenerateReport, useSaveInspection,
+  useListCondominios, useListAreas,
+  getListInspectionsQueryKey, getListCondominiosQueryKey, getListAreasQueryKey,
+  InspectionReport
+} from "@workspace/api-client-react";
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -34,6 +40,17 @@ export default function NovaVistoriaPage() {
   const [images, setImages] = useState<File[]>([]);
   const [local, setLocal] = useState("");
   const [notes, setNotes] = useState("");
+  const [condominioId, setCondominioId] = useState<string>("");
+  const [areaId, setAreaId] = useState<string>("");
+
+  const { data: condominios } = useListCondominios({
+    query: { queryKey: getListCondominiosQueryKey() }
+  });
+
+  const selectedCondominioIdNum = condominioId ? parseInt(condominioId, 10) : undefined;
+  const { data: areas } = useListAreas(selectedCondominioIdNum!, {
+    query: { enabled: !!selectedCondominioIdNum, queryKey: getListAreasQueryKey(selectedCondominioIdNum!) }
+  });
 
   const generateReport = useGenerateReport();
   const saveInspection = useSaveInspection();
@@ -52,13 +69,16 @@ export default function NovaVistoriaPage() {
   }, []);
 
   useEffect(() => {
-    if (generateReport.isPending) {
-      setLoadingMessage(t("novaVistoria.transcribing"));
-      const t1 = setTimeout(() => setLoadingMessage(t("novaVistoria.analyzingImages")), 10000);
-      const t2 = setTimeout(() => setLoadingMessage(t("novaVistoria.generatingReport")), 20000);
-      return () => { clearTimeout(t1); clearTimeout(t2); };
-    }
+    if (!generateReport.isPending) return;
+    setLoadingMessage(t("novaVistoria.transcribing"));
+    const t1 = setTimeout(() => setLoadingMessage(t("novaVistoria.analyzingImages")), 10000);
+    const t2 = setTimeout(() => setLoadingMessage(t("novaVistoria.generatingReport")), 20000);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
   }, [generateReport.isPending, t]);
+
+  useEffect(() => {
+    if (condominioId) setAreaId("");
+  }, [condominioId]);
 
   const startRecording = async () => {
     try {
@@ -108,14 +128,13 @@ export default function NovaVistoriaPage() {
         setEditedComunicado(data.comunicado);
         toast({ title: t("novaVistoria.reportGenerated"), description: t("novaVistoria.reviewBeforeSave") });
       },
-      onError: () => {
-        toast({ title: t("novaVistoria.errorGenerating"), description: t("novaVistoria.errorGeneratingDesc"), variant: "destructive" });
-      }
+      onError: () => toast({ title: t("novaVistoria.errorGenerating"), description: t("novaVistoria.errorGeneratingDesc"), variant: "destructive" }),
     });
   };
 
   const handleSave = () => {
     if (!report) return;
+    const condominioName = condominioId ? condominios?.find(c => c.id === parseInt(condominioId, 10))?.nome : undefined;
     saveInspection.mutate({
       data: {
         tipo: report.tipo,
@@ -126,6 +145,9 @@ export default function NovaVistoriaPage() {
         transcricao: report.transcricao,
         analise_imagens: report.analise_imagens,
         local: local || undefined,
+        condominio: condominioName,
+        condominioId: condominioId ? parseInt(condominioId, 10) : undefined,
+        areaId: areaId ? parseInt(areaId, 10) : undefined,
       }
     }, {
       onSuccess: () => {
@@ -133,9 +155,7 @@ export default function NovaVistoriaPage() {
         toast({ title: t("novaVistoria.savedSuccess"), description: t("novaVistoria.savedSuccessDesc") });
         setLocation("/app/historico");
       },
-      onError: () => {
-        toast({ title: t("novaVistoria.errorSaving"), description: t("novaVistoria.errorSavingDesc"), variant: "destructive" });
-      }
+      onError: () => toast({ title: t("novaVistoria.errorSaving"), description: t("novaVistoria.errorSavingDesc"), variant: "destructive" }),
     });
   };
 
@@ -194,6 +214,49 @@ export default function NovaVistoriaPage() {
 
           {/* Form Fields */}
           <div className="space-y-4">
+            {/* Condomínio selector */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-muted-foreground" />
+                {t("novaVistoria.condominioLabel")}
+              </Label>
+              {condominios && condominios.length === 0 ? (
+                <p className="text-sm text-muted-foreground">{t("novaVistoria.noCondominios")}</p>
+              ) : (
+                <Select value={condominioId} onValueChange={setCondominioId}>
+                  <SelectTrigger data-testid="select-condominio">
+                    <SelectValue placeholder={t("novaVistoria.condominioPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t("common.none")}</SelectItem>
+                    {condominios?.map(c => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Área selector */}
+            {condominioId && (
+              <div className="space-y-2">
+                <Label>{t("novaVistoria.areaLabel")}</Label>
+                <Select value={areaId} onValueChange={setAreaId}>
+                  <SelectTrigger data-testid="select-area">
+                    <SelectValue placeholder={t("novaVistoria.areaPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t("common.none")}</SelectItem>
+                    {areas?.map(a => (
+                      <SelectItem key={a.id} value={String(a.id)}>
+                        {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label htmlFor="local">{t("novaVistoria.localLabel")}</Label>
               <Input
@@ -211,51 +274,28 @@ export default function NovaVistoriaPage() {
                 {images.map((img, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-md overflow-hidden border">
                     <img src={URL.createObjectURL(img)} alt={`Preview ${i}`} className="w-full h-full object-cover" />
-                    <button
-                      className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1"
-                      onClick={() => removeImage(i)}
-                    >
+                    <button className="absolute top-1 right-1 bg-black/50 text-white rounded-full p-1" onClick={() => removeImage(i)}>
                       <X className="w-3 h-3" />
                     </button>
                   </div>
                 ))}
                 <label className="w-20 h-20 flex flex-col items-center justify-center border border-dashed rounded-md cursor-pointer hover:bg-muted/50 transition-colors">
                   <Camera className="h-6 w-6 text-muted-foreground" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    multiple
-                    className="hidden"
-                    onChange={handleImageCapture}
-                    data-testid="input-camera"
-                  />
+                  <input type="file" accept="image/*" capture="environment" multiple className="hidden" onChange={handleImageCapture} data-testid="input-camera" />
                 </label>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="notes">{t("novaVistoria.notesLabel")}</Label>
-              <Textarea
-                id="notes"
-                placeholder={t("novaVistoria.notesPlaceholder")}
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                data-testid="input-notes"
-              />
+              <Textarea id="notes" placeholder={t("novaVistoria.notesPlaceholder")} value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} data-testid="input-notes" />
             </div>
           </div>
         </CardContent>
 
         {!report && (
           <CardFooter className="bg-muted/20 border-t pt-6">
-            <Button
-              className="w-full h-12 text-lg"
-              onClick={handleSubmit}
-              disabled={!audioBlob || generateReport.isPending}
-              data-testid="button-submit-report"
-            >
+            <Button className="w-full h-12 text-lg" onClick={handleSubmit} disabled={!audioBlob || generateReport.isPending} data-testid="button-submit-report">
               {generateReport.isPending ? (
                 <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{loadingMessage}</>
               ) : t("novaVistoria.generateReport")}
@@ -264,7 +304,6 @@ export default function NovaVistoriaPage() {
         )}
       </Card>
 
-      {/* Result Section */}
       {report && (
         <Card className="border-primary/20 shadow-md overflow-hidden animate-in slide-in-from-bottom-4">
           <div className="bg-primary/5 px-6 py-4 border-b">
@@ -278,7 +317,6 @@ export default function NovaVistoriaPage() {
               </Badge>
             </div>
           </div>
-
           <CardContent className="pt-6 space-y-6">
             <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-md">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -287,35 +325,15 @@ export default function NovaVistoriaPage() {
                 <p className="text-sm">{report.acao}</p>
               </div>
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="comunicado" className="text-base font-semibold">
-                {t("novaVistoria.residentNotice")}
-              </Label>
+              <Label htmlFor="comunicado" className="text-base font-semibold">{t("novaVistoria.residentNotice")}</Label>
               <p className="text-sm text-muted-foreground">{t("novaVistoria.editBeforeSave")}</p>
-              <Textarea
-                id="comunicado"
-                value={editedComunicado}
-                onChange={(e) => setEditedComunicado(e.target.value)}
-                rows={6}
-                className="resize-y"
-                data-testid="input-comunicado"
-              />
+              <Textarea id="comunicado" value={editedComunicado} onChange={(e) => setEditedComunicado(e.target.value)} rows={6} className="resize-y" data-testid="input-comunicado" />
             </div>
           </CardContent>
-
           <CardFooter className="bg-muted/20 border-t pt-6">
-            <Button
-              className="w-full h-12 text-lg"
-              onClick={handleSave}
-              disabled={saveInspection.isPending}
-              data-testid="button-save-inspection"
-            >
-              {saveInspection.isPending ? (
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-5 w-5" />
-              )}
+            <Button className="w-full h-12 text-lg" onClick={handleSave} disabled={saveInspection.isPending} data-testid="button-save-inspection">
+              {saveInspection.isPending ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5" />}
               {t("novaVistoria.saveInspection")}
             </Button>
           </CardFooter>
