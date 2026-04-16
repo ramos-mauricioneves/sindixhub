@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useGenerateReport, useSaveInspection, getListInspectionsQueryKey, InspectionReport } from "@workspace/api-client-react";
 
@@ -20,6 +21,7 @@ function formatDuration(seconds: number) {
 export default function NovaVistoriaPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const [isRecording, setIsRecording] = useState(false);
@@ -38,7 +40,6 @@ export default function NovaVistoriaPage() {
 
   const [report, setReport] = useState<InspectionReport | null>(null);
   const [editedComunicado, setEditedComunicado] = useState("");
-
   const [loadingMessage, setLoadingMessage] = useState("");
 
   useEffect(() => {
@@ -52,48 +53,33 @@ export default function NovaVistoriaPage() {
 
   useEffect(() => {
     if (generateReport.isPending) {
-      setLoadingMessage("Transcrevendo áudio...");
-      const t1 = setTimeout(() => setLoadingMessage("Analisando imagens..."), 10000);
-      const t2 = setTimeout(() => setLoadingMessage("Gerando comunicado..."), 20000);
-      return () => {
-        clearTimeout(t1);
-        clearTimeout(t2);
-      };
+      setLoadingMessage(t("novaVistoria.transcribing"));
+      const t1 = setTimeout(() => setLoadingMessage(t("novaVistoria.analyzingImages")), 10000);
+      const t2 = setTimeout(() => setLoadingMessage(t("novaVistoria.generatingReport")), 20000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
-  }, [generateReport.isPending]);
+  }, [generateReport.isPending, t]);
 
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
-      
-      recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: "audio/webm" });
         setAudioBlob(blob);
-        stream.getTracks().forEach(t => t.stop());
+        stream.getTracks().forEach(tr => tr.stop());
       };
-      
       recorder.start();
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setRecordingSeconds(0);
       setAudioBlob(null);
       setReport(null);
-      
-      timerRef.current = setInterval(() => {
-        setRecordingSeconds(s => s + 1);
-      }, 1000);
-    } catch (error) {
-      toast({
-        title: "Erro ao acessar microfone",
-        description: "Verifique as permissões do navegador.",
-        variant: "destructive",
-      });
+      timerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000);
+    } catch {
+      toast({ title: t("novaVistoria.errorMicTitle"), description: t("novaVistoria.errorMicDesc"), variant: "destructive" });
     }
   };
 
@@ -106,54 +92,30 @@ export default function NovaVistoriaPage() {
   };
 
   const handleImageCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      setImages(prev => [...prev, ...newFiles]);
-    }
+    if (e.target.files) setImages(prev => [...prev, ...Array.from(e.target.files!)]);
   };
 
-  const removeImage = (index: number) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
-  };
+  const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
   const handleSubmit = () => {
     if (!audioBlob) {
-      toast({
-        title: "Áudio obrigatório",
-        description: "Grave um áudio relatando a ocorrência.",
-        variant: "destructive"
-      });
+      toast({ title: t("novaVistoria.audioRequired"), description: t("novaVistoria.audioRequiredDesc"), variant: "destructive" });
       return;
     }
-
-    generateReport.mutate({
-      data: {
-        audio: audioBlob,
-        images: images.length > 0 ? images : undefined,
-        notes: notes || undefined
-      }
-    }, {
+    generateReport.mutate({ data: { audio: audioBlob, images: images.length > 0 ? images : undefined, notes: notes || undefined } }, {
       onSuccess: (data) => {
         setReport(data);
         setEditedComunicado(data.comunicado);
-        toast({
-          title: "Relatório gerado!",
-          description: "Revise os dados antes de salvar."
-        });
+        toast({ title: t("novaVistoria.reportGenerated"), description: t("novaVistoria.reviewBeforeSave") });
       },
-      onError: (err) => {
-        toast({
-          title: "Erro ao gerar relatório",
-          description: err.error || "Tente novamente mais tarde.",
-          variant: "destructive"
-        });
+      onError: () => {
+        toast({ title: t("novaVistoria.errorGenerating"), description: t("novaVistoria.errorGeneratingDesc"), variant: "destructive" });
       }
     });
   };
 
   const handleSave = () => {
     if (!report) return;
-
     saveInspection.mutate({
       data: {
         tipo: report.tipo,
@@ -163,23 +125,16 @@ export default function NovaVistoriaPage() {
         comunicado: editedComunicado,
         transcricao: report.transcricao,
         analise_imagens: report.analise_imagens,
-        local: local || undefined
+        local: local || undefined,
       }
     }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getListInspectionsQueryKey() });
-        toast({
-          title: "Vistoria salva!",
-          description: "Registro adicionado com sucesso."
-        });
+        toast({ title: t("novaVistoria.savedSuccess"), description: t("novaVistoria.savedSuccessDesc") });
         setLocation("/app/historico");
       },
-      onError: (err) => {
-        toast({
-          title: "Erro ao salvar",
-          description: err.error || "Tente novamente.",
-          variant: "destructive"
-        });
+      onError: () => {
+        toast({ title: t("novaVistoria.errorSaving"), description: t("novaVistoria.errorSavingDesc"), variant: "destructive" });
       }
     });
   };
@@ -193,8 +148,8 @@ export default function NovaVistoriaPage() {
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-12">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nova Vistoria</h1>
-        <p className="text-muted-foreground">Registre uma ocorrência no condomínio.</p>
+        <h1 className="text-2xl font-bold tracking-tight">{t("novaVistoria.title")}</h1>
+        <p className="text-muted-foreground">{t("novaVistoria.subtitle")}</p>
       </div>
 
       <Card>
@@ -214,22 +169,22 @@ export default function NovaVistoriaPage() {
                 </Button>
                 <div className="text-center">
                   <p className="font-medium text-lg">
-                    {isRecording ? formatDuration(recordingSeconds) : "Iniciar Gravação"}
+                    {isRecording ? formatDuration(recordingSeconds) : t("novaVistoria.startRecording")}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    {isRecording ? "Toque para parar" : "Relate o problema em áudio"}
+                    {isRecording ? t("novaVistoria.tapToStop") : t("novaVistoria.describeIssue")}
                   </p>
                 </div>
               </>
             ) : (
               <div className="w-full max-w-sm space-y-4 px-4">
                 <div className="flex items-center justify-between bg-background p-3 rounded-md border">
-                  <div className="flex items-center gap-3 text-primary">
+                  <div className="flex items-center gap-3">
                     <Check className="h-5 w-5 text-green-500" />
-                    <span className="font-medium">Áudio gravado</span>
+                    <span className="font-medium">{t("novaVistoria.audioRecorded")}</span>
                   </div>
                   <Button variant="ghost" size="sm" onClick={() => setAudioBlob(null)}>
-                    Regravar
+                    {t("novaVistoria.reRecord")}
                   </Button>
                 </div>
                 <audio src={URL.createObjectURL(audioBlob)} controls className="w-full" />
@@ -240,10 +195,10 @@ export default function NovaVistoriaPage() {
           {/* Form Fields */}
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="local">Local da ocorrência (opcional)</Label>
+              <Label htmlFor="local">{t("novaVistoria.localLabel")}</Label>
               <Input
                 id="local"
-                placeholder="Ex: Garagem subsolo 2, Hall de entrada..."
+                placeholder={t("novaVistoria.localPlaceholder")}
                 value={local}
                 onChange={(e) => setLocal(e.target.value)}
                 data-testid="input-local"
@@ -251,7 +206,7 @@ export default function NovaVistoriaPage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Imagens (opcional)</Label>
+              <Label>{t("novaVistoria.images")}</Label>
               <div className="flex flex-wrap gap-2">
                 {images.map((img, i) => (
                   <div key={i} className="relative w-20 h-20 rounded-md overflow-hidden border">
@@ -280,10 +235,10 @@ export default function NovaVistoriaPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="notes">Observações adicionais (opcional)</Label>
+              <Label htmlFor="notes">{t("novaVistoria.notesLabel")}</Label>
               <Textarea
                 id="notes"
-                placeholder="Anotações extras..."
+                placeholder={t("novaVistoria.notesPlaceholder")}
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
@@ -292,23 +247,18 @@ export default function NovaVistoriaPage() {
             </div>
           </div>
         </CardContent>
-        
+
         {!report && (
           <CardFooter className="bg-muted/20 border-t pt-6">
-            <Button 
-              className="w-full h-12 text-lg" 
+            <Button
+              className="w-full h-12 text-lg"
               onClick={handleSubmit}
               disabled={!audioBlob || generateReport.isPending}
               data-testid="button-submit-report"
             >
               {generateReport.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  {loadingMessage}
-                </>
-              ) : (
-                "Gerar Relatório IA"
-              )}
+                <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{loadingMessage}</>
+              ) : t("novaVistoria.generateReport")}
             </Button>
           </CardFooter>
         )}
@@ -320,29 +270,29 @@ export default function NovaVistoriaPage() {
           <div className="bg-primary/5 px-6 py-4 border-b">
             <div className="flex items-start justify-between">
               <div>
-                <Badge variant="outline" className="mb-2 bg-background">
-                  {report.tipo}
-                </Badge>
-                <CardTitle className="text-xl">{report.resumo}</CardTitle>
+                <Badge variant="outline" className="mb-2 bg-background">{report.tipo}</Badge>
+                <h2 className="text-xl font-bold">{report.resumo}</h2>
               </div>
               <Badge className={getUrgenciaColor(report.urgencia)} variant="secondary">
                 {report.urgencia.toUpperCase()}
               </Badge>
             </div>
           </div>
-          
+
           <CardContent className="pt-6 space-y-6">
             <div className="flex items-start gap-3 bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 p-4 rounded-md">
               <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
               <div>
-                <p className="font-semibold text-sm">Ação Recomendada</p>
+                <p className="font-semibold text-sm">{t("novaVistoria.recommendedAction")}</p>
                 <p className="text-sm">{report.acao}</p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="comunicado" className="text-base font-semibold">Comunicado aos Moradores</Label>
-              <p className="text-sm text-muted-foreground">Você pode editar este texto antes de salvar.</p>
+              <Label htmlFor="comunicado" className="text-base font-semibold">
+                {t("novaVistoria.residentNotice")}
+              </Label>
+              <p className="text-sm text-muted-foreground">{t("novaVistoria.editBeforeSave")}</p>
               <Textarea
                 id="comunicado"
                 value={editedComunicado}
@@ -355,8 +305,8 @@ export default function NovaVistoriaPage() {
           </CardContent>
 
           <CardFooter className="bg-muted/20 border-t pt-6">
-            <Button 
-              className="w-full h-12 text-lg" 
+            <Button
+              className="w-full h-12 text-lg"
               onClick={handleSave}
               disabled={saveInspection.isPending}
               data-testid="button-save-inspection"
@@ -366,7 +316,7 @@ export default function NovaVistoriaPage() {
               ) : (
                 <Save className="mr-2 h-5 w-5" />
               )}
-              Salvar Vistoria
+              {t("novaVistoria.saveInspection")}
             </Button>
           </CardFooter>
         </Card>

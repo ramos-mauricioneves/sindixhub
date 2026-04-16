@@ -1,71 +1,26 @@
 import { useParams, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { ArrowLeft, Copy, MessageCircle, Calendar, MapPin, Building2, ClipboardList, Zap, Info, FileText } from "lucide-react";
+import { ptBR, enUS } from "date-fns/locale";
+import { ArrowLeft, Copy, MessageSquare, Loader2, AlertCircle } from "lucide-react";
 import { useGetInspection, getGetInspectionQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Spinner } from "@/components/ui/spinner";
-import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 export default function VistoriaDetailPage() {
-  const { id } = useParams();
+  const { t, i18n } = useTranslation();
+  const params = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  
-  const inspectionId = parseInt(id || "0", 10);
-  
-  const { data: inspection, isPending, isError } = useGetInspection(inspectionId, {
-    query: {
-      enabled: !!inspectionId,
-      queryKey: getGetInspectionQueryKey(inspectionId)
-    }
+  const id = parseInt(params.id, 10);
+  const locale = i18n.language === "pt" ? ptBR : enUS;
+
+  const { data: inspection, isPending, isError } = useGetInspection(id, {
+    query: { enabled: !isNaN(id), queryKey: getGetInspectionQueryKey(id) }
   });
-
-  const handleCopy = () => {
-    if (inspection?.comunicado) {
-      navigator.clipboard.writeText(inspection.comunicado);
-      toast({
-        title: "Copiado!",
-        description: "Comunicado copiado para a área de transferência."
-      });
-    }
-  };
-
-  const handleWhatsApp = () => {
-    if (inspection?.comunicado) {
-      console.log("Sharing to WhatsApp:", inspection.comunicado);
-      toast({
-        title: "Compartilhamento simulado",
-        description: "Abriria o WhatsApp com o texto preenchido."
-      });
-    }
-  };
-
-  if (isPending) {
-    return (
-      <div className="flex justify-center items-center py-20">
-        <Spinner className="h-8 w-8 text-primary" />
-      </div>
-    );
-  }
-
-  if (isError || !inspection) {
-    return (
-      <div className="text-center py-12 text-destructive">
-        <Info className="h-12 w-12 mx-auto mb-4 opacity-50" />
-        <h2 className="text-xl font-bold mb-2">Vistoria não encontrada</h2>
-        <p className="mb-6">Não foi possível carregar os detalhes desta vistoria.</p>
-        <Button variant="outline" onClick={() => setLocation("/app/historico")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Voltar para histórico
-        </Button>
-      </div>
-    );
-  }
 
   const getUrgenciaColor = (u: string) => {
     if (u === "alta") return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
@@ -73,128 +28,138 @@ export default function VistoriaDetailPage() {
     return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
   };
 
-  return (
-    <div className="space-y-6 max-w-3xl mx-auto pb-12">
-      <Button variant="ghost" className="mb-2 -ml-2 text-muted-foreground" onClick={() => setLocation("/app/historico")}>
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Voltar
-      </Button>
+  const getUrgenciaLabel = (u: string) => {
+    if (u === "alta") return t("historico.high");
+    if (u === "média" || u === "media") return t("historico.medium");
+    return t("historico.low");
+  };
 
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-sm font-medium">
-            {inspection.tipo}
-          </Badge>
-          <Badge className={`text-xs font-semibold uppercase tracking-wider ${getUrgenciaColor(inspection.urgencia)}`} variant="secondary">
-            Urgência {inspection.urgencia}
-          </Badge>
-        </div>
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-          {inspection.resumo}
-        </h1>
-        
-        <div className="flex flex-wrap gap-y-2 gap-x-6 text-sm text-muted-foreground mt-2">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-4 w-4 shrink-0" />
-            {format(new Date(inspection.createdAt), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-          </div>
-          {inspection.local && (
-            <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4 shrink-0" />
-              {inspection.local}
-            </div>
-          )}
-          {inspection.condominio && (
-            <div className="flex items-center gap-2">
-              <Building2 className="h-4 w-4 shrink-0" />
-              {inspection.condominio}
-            </div>
-          )}
+  const handleCopy = () => {
+    if (!inspection) return;
+    navigator.clipboard.writeText(inspection.comunicado).then(() => {
+      toast({ title: t("common.copied") });
+    });
+  };
+
+  const handleWhatsApp = () => {
+    if (!inspection) return;
+    console.log("WhatsApp:", inspection.comunicado);
+    toast({ title: t("detalhe.whatsAppSent") });
+  };
+
+  if (isPending) {
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (isError || !inspection) {
+    return (
+      <div className="text-center py-12">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4 text-destructive opacity-50" />
+        <p className="text-muted-foreground">{t("detalhe.errorLoading")}</p>
+        <Button variant="outline" className="mt-4" onClick={() => setLocation("/app/historico")}>
+          {t("common.back")}
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl mx-auto pb-12">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => setLocation("/app/historico")} data-testid="button-back">
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t("detalhe.title")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {format(new Date(inspection.createdAt), i18n.language === "pt" ? "dd 'de' MMMM 'de' yyyy" : "MMMM dd, yyyy", { locale })}
+          </p>
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 mt-8">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader className="bg-muted/30 pb-4">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <FileText className="h-5 w-5 text-primary" />
-                Comunicado
-              </CardTitle>
-              <CardDescription>Texto para envio aos moradores ou responsáveis.</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="bg-background rounded-md border p-4 text-sm whitespace-pre-wrap leading-relaxed font-medium">
-                {inspection.comunicado}
-              </div>
-            </CardContent>
-            <CardFooter className="bg-muted/30 border-t flex flex-wrap gap-3 pt-6">
-              <Button onClick={handleCopy} variant="secondary" className="flex-1 sm:flex-none">
-                <Copy className="mr-2 h-4 w-4" />
-                Copiar
+      {/* Header Card */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div>
+              <Badge variant="outline" className="mb-2">{inspection.tipo}</Badge>
+              <h2 className="text-xl font-bold">{inspection.resumo}</h2>
+            </div>
+            <Badge className={`${getUrgenciaColor(inspection.urgencia)} shrink-0`} variant="secondary">
+              {getUrgenciaLabel(inspection.urgencia)}
+            </Badge>
+          </div>
+
+          {(inspection.local || inspection.condominio) && (
+            <div className="text-sm text-muted-foreground space-y-1 border-t pt-4">
+              {inspection.local && (
+                <p><span className="font-medium text-foreground">{t("detalhe.local")}:</span> {inspection.local}</p>
+              )}
+              {inspection.condominio && (
+                <p><span className="font-medium text-foreground">{t("detalhe.condominio")}:</span> {inspection.condominio}</p>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recommended Action */}
+      <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-900">
+        <CardContent className="pt-6">
+          <p className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-1">{t("detalhe.acao")}</p>
+          <p className="text-blue-800 dark:text-blue-300">{inspection.acao}</p>
+        </CardContent>
+      </Card>
+
+      {/* Comunicado */}
+      <Card>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base">{t("detalhe.comunicado")}</CardTitle>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={handleCopy} data-testid="button-copy">
+                <Copy className="h-4 w-4 mr-1.5" />
+                {t("common.copy")}
               </Button>
-              <Button onClick={handleWhatsApp} className="flex-1 sm:flex-none bg-green-600 hover:bg-green-700 text-white">
-                <MessageCircle className="mr-2 h-4 w-4" />
+              <Button variant="outline" size="sm" onClick={handleWhatsApp} data-testid="button-whatsapp">
+                <MessageSquare className="h-4 w-4 mr-1.5" />
                 WhatsApp
               </Button>
-            </CardFooter>
-          </Card>
-
-          {(inspection.transcricao || inspection.analise_imagens) && (
-            <Card>
-              <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-base">Detalhes da Análise IA</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                {inspection.transcricao && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                      <ClipboardList className="h-4 w-4" />
-                      Transcrição do Áudio
-                    </h4>
-                    <p className="text-sm bg-muted/30 p-3 rounded border text-foreground/80 italic">
-                      "{inspection.transcricao}"
-                    </p>
-                  </div>
-                )}
-                
-                {inspection.analise_imagens && (
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                      <Zap className="h-4 w-4" />
-                      Análise de Imagens
-                    </h4>
-                    <p className="text-sm text-foreground/80">
-                      {inspection.analise_imagens}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
-
-        <div className="space-y-6">
-          <Card className="border-primary/20 shadow-sm bg-primary/5">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2 text-primary">
-                <AlertCircle className="h-5 w-5" />
-                Ação Recomendada
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm font-medium leading-relaxed">
-                {inspection.acao}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <div className="text-xs text-muted-foreground text-center px-4">
-            <p>ID da vistoria: #{inspection.id}</p>
-            <p>Reportado por: {inspection.createdByClerkId.substring(0, 8)}...</p>
+            </div>
           </div>
-        </div>
-      </div>
+        </CardHeader>
+        <CardContent>
+          <Textarea value={inspection.comunicado} readOnly rows={8} className="resize-none bg-muted/30" />
+        </CardContent>
+      </Card>
+
+      {/* Transcript */}
+      {inspection.transcricao && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("detalhe.transcricao")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed">{inspection.transcricao}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Image Analysis */}
+      {inspection.analise_imagens && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">{t("detalhe.analiseImagens")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground leading-relaxed">{inspection.analise_imagens}</p>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

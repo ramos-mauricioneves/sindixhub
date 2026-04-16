@@ -1,8 +1,28 @@
 import { Show } from "@clerk/react";
 import { Link, useLocation } from "wouter";
+import { useTranslation } from "react-i18next";
 import { useGetMe } from "@workspace/api-client-react";
-import { ClipboardCheck, Loader2 } from "lucide-react";
+import { ClipboardCheck, Loader2, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const toggle = () => {
+    const next = i18n.language === "pt" ? "en" : "pt";
+    i18n.changeLanguage(next);
+    localStorage.setItem("lang", next);
+  };
+  return (
+    <button
+      onClick={toggle}
+      className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+      data-testid="button-lang-switch-landing"
+    >
+      <Globe className="h-4 w-4" />
+      {i18n.language === "pt" ? "EN" : "PT"}
+    </button>
+  );
+}
 
 function AuthenticatedRedirect() {
   const [, setLocation] = useLocation();
@@ -30,6 +50,7 @@ function AuthenticatedRedirect() {
 }
 
 export default function HomeRedirect() {
+  const { t } = useTranslation();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
   return (
@@ -44,12 +65,13 @@ export default function HomeRedirect() {
               <ClipboardCheck className="h-6 w-6" />
               <span>Vistorias</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Link href={`${basePath}/sign-in`} className="text-sm font-medium hover:underline text-muted-foreground px-4 py-2">
-                Entrar
+            <div className="flex items-center gap-3">
+              <LanguageSwitcher />
+              <Link href={`${basePath}/sign-in`} className="text-sm font-medium hover:underline text-muted-foreground px-3 py-2">
+                {t("home.enter")}
               </Link>
               <Link href={`${basePath}/sign-up`}>
-                <Button size="sm">Cadastrar</Button>
+                <Button size="sm">{t("home.register")}</Button>
               </Link>
             </div>
           </header>
@@ -60,21 +82,21 @@ export default function HomeRedirect() {
                 <ClipboardCheck className="h-12 w-12 text-primary" />
               </div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
-                Assistente de Vistoria Condominial
+                {t("home.title")}
               </h1>
               <p className="text-lg text-muted-foreground">
-                Ferramenta profissional para síndicos e vistoriadores. Registre ocorrências, analise imagens e gere relatórios com IA diretamente do local.
+                {t("home.subtitle")}
               </p>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
                 <Link href={`${basePath}/sign-in`} className="w-full sm:w-auto">
                   <Button size="lg" className="w-full text-base h-12 px-8">
-                    Fazer Login
+                    {t("home.signIn")}
                   </Button>
                 </Link>
                 <Link href={`${basePath}/sign-up`} className="w-full sm:w-auto">
                   <Button size="lg" variant="outline" className="w-full text-base h-12 px-8">
-                    Criar Conta
+                    {t("home.signUp")}
                   </Button>
                 </Link>
               </div>

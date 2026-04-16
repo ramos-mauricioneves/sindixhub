@@ -1,9 +1,9 @@
 import React, { createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
+import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
-import { FileText, History, Users, LogOut, ClipboardCheck } from "lucide-react";
-import { Spinner } from "@/components/ui/spinner";
+import { FileText, History, Users, LogOut, ClipboardCheck, Globe, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const UserContext = createContext<UserProfile | undefined>(undefined);
@@ -12,7 +12,31 @@ export function useUser() {
   return useContext(UserContext);
 }
 
+function LanguageSwitcher() {
+  const { i18n } = useTranslation();
+  const currentLang = i18n.language;
+
+  const toggle = () => {
+    const next = currentLang === "pt" ? "en" : "pt";
+    i18n.changeLanguage(next);
+    localStorage.setItem("lang", next);
+  };
+
+  return (
+    <button
+      onClick={toggle}
+      className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-muted"
+      data-testid="button-lang-switch"
+      title={currentLang === "pt" ? "Switch to English" : "Mudar para Português"}
+    >
+      <Globe className="h-3.5 w-3.5" />
+      {currentLang === "pt" ? "EN" : "PT"}
+    </button>
+  );
+}
+
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { t } = useTranslation();
   const { data: user, isPending, isError } = useGetMe();
   const { signOut } = useClerk();
   const [location] = useLocation();
@@ -20,7 +44,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   if (isPending) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-background">
-        <Spinner className="h-8 w-8 text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -28,8 +52,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   if (isError || !user) {
     return (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background p-4 text-center">
-        <p className="text-muted-foreground mb-4">Erro ao carregar perfil.</p>
-        <Button onClick={() => window.location.reload()}>Tentar novamente</Button>
+        <p className="text-muted-foreground mb-4">{t("errors.profileError")}</p>
+        <Button onClick={() => window.location.reload()}>{t("errors.tryAgain")}</Button>
       </div>
     );
   }
@@ -38,15 +62,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [];
   if (role === "admin") {
-    navItems.push({ label: "Nova Vistoria", path: "/app/nova-vistoria", icon: FileText });
-    navItems.push({ label: "Todas Vistorias", path: "/app/historico", icon: History });
-    navItems.push({ label: "Usuários", path: "/app/admin", icon: Users });
+    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
+    navItems.push({ label: t("nav.todasVistorias"), path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.usuarios"), path: "/app/admin", icon: Users });
   } else if (role === "sindico") {
-    navItems.push({ label: "Nova Vistoria", path: "/app/nova-vistoria", icon: FileText });
-    navItems.push({ label: "Vistorias", path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
+    navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: History });
   } else {
-    navItems.push({ label: "Nova Vistoria", path: "/app/nova-vistoria", icon: FileText });
-    navItems.push({ label: "Meu Histórico", path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
+    navItems.push({ label: t("nav.historico"), path: "/app/historico", icon: History });
   }
 
   return (
@@ -80,10 +104,13 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             })}
           </nav>
 
-          <div className="mt-auto border-t pt-4">
-            <div className="px-2 mb-4">
-              <p className="text-sm font-medium truncate">{user.name || user.email}</p>
-              <p className="text-xs text-muted-foreground capitalize">{role}</p>
+          <div className="mt-auto border-t pt-4 space-y-2">
+            <div className="flex items-center justify-between px-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium truncate">{user.name || user.email}</p>
+                <p className="text-xs text-muted-foreground capitalize">{role}</p>
+              </div>
+              <LanguageSwitcher />
             </div>
             <Button
               variant="ghost"
@@ -92,7 +119,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               data-testid="button-signout"
             >
               <LogOut className="h-5 w-5 mr-2" />
-              Sair
+              {t("common.signOut")}
             </Button>
           </div>
         </aside>
@@ -104,15 +131,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <ClipboardCheck className="h-5 w-5" />
               <span>Vistorias</span>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => signOut()}
-              className="text-muted-foreground"
-              data-testid="button-signout-mobile"
-            >
-              <LogOut className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <LanguageSwitcher />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => signOut()}
+                className="text-muted-foreground"
+                data-testid="button-signout-mobile"
+              >
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
           <div className="flex-1 overflow-auto bg-background p-4 md:p-8">
             <div className="mx-auto max-w-3xl w-full">
