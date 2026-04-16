@@ -37,11 +37,11 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ## Artifacts
 
-### Assistente de Vistoria Condominial (`artifacts/vistoria-app`)
+### CondoGest — Gestão Condominial (`artifacts/vistoria-app`)
 
-React + Vite mobile-first frontend for a condominium inspection assistant. Building managers record audio and capture photos during inspections; AI generates professional notices for residents.
+React + Vite mobile-first frontend for full condominium management. Evolved from an inspection assistant into a complete platform. Building managers record audio and capture photos during inspections; AI generates professional notices. Also manages residents, finances, and assets.
 
-**Authentication:** Clerk (ClerkProvider wraps WouterRouter internally via ClerkProviderWithRoutes pattern).
+**Authentication:** Clerk configured but bypassed in dev via `VITE_AUTH_BYPASS=true` in `.env.local`. Backend bypass enabled via `AUTH_BYPASS=true` in the api-server dev script. `BypassProviderWithRoutes` skips `ClerkProvider` entirely; `SignOutContext` replaces `useClerk` for sign-out.
 
 **Roles:**
 - `vistoriador` — creates inspections, views own history
@@ -56,6 +56,8 @@ React + Vite mobile-first frontend for a condominium inspection assistant. Build
 - `/app/nova-vistoria` — Create new event: tipoEvento selector (Vistoria/Manutenção/Incidente/Melhoria), condomínio + área + asset selectors, MediaRecorder audio + camera capture
 - `/app/historico` — Event history with urgência, status, tipoEvento filters; tipoEvento badges on cards
 - `/app/vistoria/:id` — Event detail: tipoEvento badge, copy/WhatsApp buttons + status badge; síndico/admin can advance status
+- `/app/moradores` — Residents CRUD: unidade, nome, tipo (proprietario/inquilino/morador/dependente), telefone, email, ativo; filter by tipo and ativo status; search by name or unit
+- `/app/financeiro` — Financial entries CRUD: receita/despesa by categoria, valor, dataVencimento, dataPagamento, status (pendente/pago/cancelado); summary cards (receitas, despesas, saldo); quick "mark as paid" action
 - `/app/admin` — Admin user management panel
 - `/app/condominios` — Admin-only condominium CRUD + area management (inline expandable)
 
@@ -105,6 +107,8 @@ Express 5 backend with Clerk authentication middleware.
 - `areasTable` — condominioId (FK), nome, tipo (comum|predial), createdAt
 - `assetsTable` — condominioId (FK), areaId (nullable FK), nome, tipo (equipamento|estrutura|sistema), criticidade (baixa|media|alta), status (operacional|em_manutencao|inativo), descricao, createdAt
 - `userCondominiosTable` — clerkId (FK), condominioId (FK) — many-to-many for síndico access scoping
+- `moradoresTable` — condominioId (FK), unidade, nome, tipo (proprietario|inquilino|morador|dependente), telefone, email, ativo, createdAt
+- `lancamentosTable` — condominioId (FK), tipo (receita|despesa), categoria, descricao, valor (numeric string), dataVencimento, dataPagamento, status (pendente|pago|cancelado), observacao, createdAt
 
 **Inspection Status Workflow:**
 `gerado` (default, created by AI) → `pronto_para_envio` (ready to send, set by síndico/admin) → `enviado` (sent, set by síndico/admin)

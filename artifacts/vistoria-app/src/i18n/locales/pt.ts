@@ -27,6 +27,8 @@ export default {
     condominios: "Condomínios",
     dashboard: "Painel",
     ativos: "Ativos",
+    moradores: "Moradores",
+    financeiro: "Financeiro",
   },
   home: {
     title: "Assistente de Vistoria Condominial",

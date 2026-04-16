@@ -32,8 +32,14 @@ import type {
   HealthStatus,
   InspectionListResponse,
   InspectionReport,
+  Lancamento,
+  LancamentoBody,
   ListAssetsParams,
   ListInspectionsParams,
+  ListLancamentosParams,
+  ListMoradoresParams,
+  Morador,
+  MoradorBody,
   RemoveUserCondominio200,
   SaveInspectionBody,
   SavedInspection,
@@ -2189,3 +2195,793 @@ export function useGetDashboardSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List residents for a condominium
+ */
+export const getListMoradoresUrl = (
+  condominioId: number,
+  params?: ListMoradoresParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/condominios/${condominioId}/moradores?${stringifiedParams}`
+    : `/api/condominios/${condominioId}/moradores`;
+};
+
+export const listMoradores = async (
+  condominioId: number,
+  params?: ListMoradoresParams,
+  options?: RequestInit,
+): Promise<Morador[]> => {
+  return customFetch<Morador[]>(getListMoradoresUrl(condominioId, params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMoradoresQueryKey = (
+  condominioId: number,
+  params?: ListMoradoresParams,
+) => {
+  return [
+    `/api/condominios/${condominioId}/moradores`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListMoradoresQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMoradores>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  condominioId: number,
+  params?: ListMoradoresParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMoradores>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListMoradoresQueryKey(condominioId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMoradores>>> = ({
+    signal,
+  }) => listMoradores(condominioId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMoradores>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMoradoresQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMoradores>>
+>;
+export type ListMoradoresQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List residents for a condominium
+ */
+
+export function useListMoradores<
+  TData = Awaited<ReturnType<typeof listMoradores>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  condominioId: number,
+  params?: ListMoradoresParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMoradores>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMoradoresQueryOptions(
+    condominioId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a resident
+ */
+export const getCreateMoradorUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/moradores`;
+};
+
+export const createMorador = async (
+  condominioId: number,
+  moradorBody: MoradorBody,
+  options?: RequestInit,
+): Promise<Morador> => {
+  return customFetch<Morador>(getCreateMoradorUrl(condominioId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(moradorBody),
+  });
+};
+
+export const getCreateMoradorMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMorador>>,
+    TError,
+    { condominioId: number; data: BodyType<MoradorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMorador>>,
+  TError,
+  { condominioId: number; data: BodyType<MoradorBody> },
+  TContext
+> => {
+  const mutationKey = ["createMorador"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMorador>>,
+    { condominioId: number; data: BodyType<MoradorBody> }
+  > = (props) => {
+    const { condominioId, data } = props ?? {};
+
+    return createMorador(condominioId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMoradorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMorador>>
+>;
+export type CreateMoradorMutationBody = BodyType<MoradorBody>;
+export type CreateMoradorMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a resident
+ */
+export const useCreateMorador = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMorador>>,
+    TError,
+    { condominioId: number; data: BodyType<MoradorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMorador>>,
+  TError,
+  { condominioId: number; data: BodyType<MoradorBody> },
+  TContext
+> => {
+  return useMutation(getCreateMoradorMutationOptions(options));
+};
+
+/**
+ * @summary Update a resident
+ */
+export const getUpdateMoradorUrl = (
+  condominioId: number,
+  moradorId: number,
+) => {
+  return `/api/condominios/${condominioId}/moradores/${moradorId}`;
+};
+
+export const updateMorador = async (
+  condominioId: number,
+  moradorId: number,
+  moradorBody: MoradorBody,
+  options?: RequestInit,
+): Promise<Morador> => {
+  return customFetch<Morador>(getUpdateMoradorUrl(condominioId, moradorId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(moradorBody),
+  });
+};
+
+export const getUpdateMoradorMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMorador>>,
+    TError,
+    { condominioId: number; moradorId: number; data: BodyType<MoradorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMorador>>,
+  TError,
+  { condominioId: number; moradorId: number; data: BodyType<MoradorBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMorador"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMorador>>,
+    { condominioId: number; moradorId: number; data: BodyType<MoradorBody> }
+  > = (props) => {
+    const { condominioId, moradorId, data } = props ?? {};
+
+    return updateMorador(condominioId, moradorId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMoradorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMorador>>
+>;
+export type UpdateMoradorMutationBody = BodyType<MoradorBody>;
+export type UpdateMoradorMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a resident
+ */
+export const useUpdateMorador = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMorador>>,
+    TError,
+    { condominioId: number; moradorId: number; data: BodyType<MoradorBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMorador>>,
+  TError,
+  { condominioId: number; moradorId: number; data: BodyType<MoradorBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMoradorMutationOptions(options));
+};
+
+/**
+ * @summary Delete a resident
+ */
+export const getDeleteMoradorUrl = (
+  condominioId: number,
+  moradorId: number,
+) => {
+  return `/api/condominios/${condominioId}/moradores/${moradorId}`;
+};
+
+export const deleteMorador = async (
+  condominioId: number,
+  moradorId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteMoradorUrl(condominioId, moradorId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMoradorMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMorador>>,
+    TError,
+    { condominioId: number; moradorId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMorador>>,
+  TError,
+  { condominioId: number; moradorId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteMorador"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMorador>>,
+    { condominioId: number; moradorId: number }
+  > = (props) => {
+    const { condominioId, moradorId } = props ?? {};
+
+    return deleteMorador(condominioId, moradorId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMoradorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMorador>>
+>;
+
+export type DeleteMoradorMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a resident
+ */
+export const useDeleteMorador = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMorador>>,
+    TError,
+    { condominioId: number; moradorId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMorador>>,
+  TError,
+  { condominioId: number; moradorId: number },
+  TContext
+> => {
+  return useMutation(getDeleteMoradorMutationOptions(options));
+};
+
+/**
+ * @summary List financial entries for a condominium
+ */
+export const getListLancamentosUrl = (
+  condominioId: number,
+  params?: ListLancamentosParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/condominios/${condominioId}/lancamentos?${stringifiedParams}`
+    : `/api/condominios/${condominioId}/lancamentos`;
+};
+
+export const listLancamentos = async (
+  condominioId: number,
+  params?: ListLancamentosParams,
+  options?: RequestInit,
+): Promise<Lancamento[]> => {
+  return customFetch<Lancamento[]>(
+    getListLancamentosUrl(condominioId, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListLancamentosQueryKey = (
+  condominioId: number,
+  params?: ListLancamentosParams,
+) => {
+  return [
+    `/api/condominios/${condominioId}/lancamentos`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getListLancamentosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLancamentos>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  condominioId: number,
+  params?: ListLancamentosParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLancamentos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListLancamentosQueryKey(condominioId, params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listLancamentos>>> = ({
+    signal,
+  }) => listLancamentos(condominioId, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLancamentos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLancamentosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLancamentos>>
+>;
+export type ListLancamentosQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List financial entries for a condominium
+ */
+
+export function useListLancamentos<
+  TData = Awaited<ReturnType<typeof listLancamentos>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  condominioId: number,
+  params?: ListLancamentosParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLancamentos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLancamentosQueryOptions(
+    condominioId,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a financial entry
+ */
+export const getCreateLancamentoUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/lancamentos`;
+};
+
+export const createLancamento = async (
+  condominioId: number,
+  lancamentoBody: LancamentoBody,
+  options?: RequestInit,
+): Promise<Lancamento> => {
+  return customFetch<Lancamento>(getCreateLancamentoUrl(condominioId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(lancamentoBody),
+  });
+};
+
+export const getCreateLancamentoMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLancamento>>,
+    TError,
+    { condominioId: number; data: BodyType<LancamentoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createLancamento>>,
+  TError,
+  { condominioId: number; data: BodyType<LancamentoBody> },
+  TContext
+> => {
+  const mutationKey = ["createLancamento"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createLancamento>>,
+    { condominioId: number; data: BodyType<LancamentoBody> }
+  > = (props) => {
+    const { condominioId, data } = props ?? {};
+
+    return createLancamento(condominioId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateLancamentoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createLancamento>>
+>;
+export type CreateLancamentoMutationBody = BodyType<LancamentoBody>;
+export type CreateLancamentoMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Create a financial entry
+ */
+export const useCreateLancamento = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLancamento>>,
+    TError,
+    { condominioId: number; data: BodyType<LancamentoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createLancamento>>,
+  TError,
+  { condominioId: number; data: BodyType<LancamentoBody> },
+  TContext
+> => {
+  return useMutation(getCreateLancamentoMutationOptions(options));
+};
+
+/**
+ * @summary Update a financial entry
+ */
+export const getUpdateLancamentoUrl = (
+  condominioId: number,
+  lancamentoId: number,
+) => {
+  return `/api/condominios/${condominioId}/lancamentos/${lancamentoId}`;
+};
+
+export const updateLancamento = async (
+  condominioId: number,
+  lancamentoId: number,
+  lancamentoBody: LancamentoBody,
+  options?: RequestInit,
+): Promise<Lancamento> => {
+  return customFetch<Lancamento>(
+    getUpdateLancamentoUrl(condominioId, lancamentoId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(lancamentoBody),
+    },
+  );
+};
+
+export const getUpdateLancamentoMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLancamento>>,
+    TError,
+    {
+      condominioId: number;
+      lancamentoId: number;
+      data: BodyType<LancamentoBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateLancamento>>,
+  TError,
+  {
+    condominioId: number;
+    lancamentoId: number;
+    data: BodyType<LancamentoBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateLancamento"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateLancamento>>,
+    {
+      condominioId: number;
+      lancamentoId: number;
+      data: BodyType<LancamentoBody>;
+    }
+  > = (props) => {
+    const { condominioId, lancamentoId, data } = props ?? {};
+
+    return updateLancamento(condominioId, lancamentoId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateLancamentoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateLancamento>>
+>;
+export type UpdateLancamentoMutationBody = BodyType<LancamentoBody>;
+export type UpdateLancamentoMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Update a financial entry
+ */
+export const useUpdateLancamento = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLancamento>>,
+    TError,
+    {
+      condominioId: number;
+      lancamentoId: number;
+      data: BodyType<LancamentoBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateLancamento>>,
+  TError,
+  {
+    condominioId: number;
+    lancamentoId: number;
+    data: BodyType<LancamentoBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateLancamentoMutationOptions(options));
+};
+
+/**
+ * @summary Delete a financial entry
+ */
+export const getDeleteLancamentoUrl = (
+  condominioId: number,
+  lancamentoId: number,
+) => {
+  return `/api/condominios/${condominioId}/lancamentos/${lancamentoId}`;
+};
+
+export const deleteLancamento = async (
+  condominioId: number,
+  lancamentoId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteLancamentoUrl(condominioId, lancamentoId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteLancamentoMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLancamento>>,
+    TError,
+    { condominioId: number; lancamentoId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteLancamento>>,
+  TError,
+  { condominioId: number; lancamentoId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteLancamento"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteLancamento>>,
+    { condominioId: number; lancamentoId: number }
+  > = (props) => {
+    const { condominioId, lancamentoId } = props ?? {};
+
+    return deleteLancamento(condominioId, lancamentoId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteLancamentoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteLancamento>>
+>;
+
+export type DeleteLancamentoMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete a financial entry
+ */
+export const useDeleteLancamento = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLancamento>>,
+    TError,
+    { condominioId: number; lancamentoId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteLancamento>>,
+  TError,
+  { condominioId: number; lancamentoId: number },
+  TContext
+> => {
+  return useMutation(getDeleteLancamentoMutationOptions(options));
+};

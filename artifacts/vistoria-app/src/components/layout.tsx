@@ -1,10 +1,10 @@
 import React, { createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
-import { useClerk } from "@clerk/react";
 import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
-import { FileText, History, Users, LogOut, ClipboardCheck, Globe, Loader2, Building2, LayoutDashboard, Package } from "lucide-react";
+import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, UserRound, Wallet, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSignOut } from "@/App";
 
 const UserContext = createContext<UserProfile | undefined>(undefined);
 
@@ -38,7 +38,7 @@ function LanguageSwitcher() {
 export default function Layout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { data: user, isPending, isError } = useGetMe();
-  const { signOut } = useClerk();
+  const signOut = useSignOut();
   const [location] = useLocation();
 
   if (isPending) {
@@ -63,16 +63,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [];
   if (role === "admin") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
-    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
-    navItems.push({ label: t("nav.todasVistorias"), path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.moradores"), path: "/app/moradores", icon: UserRound });
+    navItems.push({ label: t("nav.financeiro"), path: "/app/financeiro", icon: Wallet });
     navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
+    navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
+    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
     navItems.push({ label: t("nav.condominios"), path: "/app/condominios", icon: Building2 });
     navItems.push({ label: t("nav.usuarios"), path: "/app/admin", icon: Users });
   } else if (role === "sindico") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
-    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
-    navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.moradores"), path: "/app/moradores", icon: UserRound });
+    navItems.push({ label: t("nav.financeiro"), path: "/app/financeiro", icon: Wallet });
     navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
+    navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
+    navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
   } else {
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
     navItems.push({ label: t("nav.historico"), path: "/app/historico", icon: History });
@@ -84,11 +88,11 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col w-64 bg-card border-r px-4 py-6">
           <div className="flex items-center gap-2 px-2 mb-8 text-primary font-bold text-xl">
-            <ClipboardCheck className="h-6 w-6" />
-            <span>Vistorias</span>
+            <Building2 className="h-6 w-6" />
+            <span>CondoGest</span>
           </div>
 
-          <nav className="flex-1 space-y-2">
+          <nav className="flex-1 space-y-1 overflow-y-auto">
             {navItems.map((item) => {
               const isActive = location === item.path || location.startsWith(`${item.path}/`);
               return (
@@ -102,7 +106,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                   }`}
                   data-testid={`nav-desktop-${item.path.replace("/app/", "")}`}
                 >
-                  <item.icon className="h-5 w-5" />
+                  <item.icon className="h-5 w-5 shrink-0" />
                   {item.label}
                 </Link>
               );
@@ -133,8 +137,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col min-w-0 pb-[80px] md:pb-0">
           <div className="md:hidden flex items-center justify-between p-4 bg-card border-b">
             <div className="flex items-center gap-2 text-primary font-bold text-lg">
-              <ClipboardCheck className="h-5 w-5" />
-              <span>Vistorias</span>
+              <Building2 className="h-5 w-5" />
+              <span>CondoGest</span>
             </div>
             <div className="flex items-center gap-2">
               <LanguageSwitcher />
@@ -156,21 +160,21 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </div>
         </main>
 
-        {/* Mobile Bottom Nav */}
+        {/* Mobile Bottom Nav — show max 5 most important items */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t flex justify-around p-2 pb-safe z-50">
-          {navItems.map((item) => {
+          {navItems.slice(0, 5).map((item) => {
             const isActive = location === item.path || location.startsWith(`${item.path}/`);
             return (
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex flex-col items-center justify-center p-2 min-w-[64px] transition-colors ${
+                className={`flex flex-col items-center justify-center p-2 min-w-[52px] transition-colors ${
                   isActive ? "text-primary" : "text-muted-foreground"
                 }`}
                 data-testid={`nav-mobile-${item.path.replace("/app/", "")}`}
               >
-                <item.icon className="h-6 w-6 mb-1" />
-                <span className="text-[10px] font-medium">{item.label}</span>
+                <item.icon className="h-5 w-5 mb-1" />
+                <span className="text-[9px] font-medium leading-tight text-center">{item.label}</span>
               </Link>
             );
           })}

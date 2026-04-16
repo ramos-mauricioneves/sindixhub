@@ -518,3 +518,168 @@ export const GetDashboardSummaryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary List residents for a condominium
+ */
+export const ListMoradoresParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const ListMoradoresQueryParams = zod.object({
+  tipo: zod.coerce.string().optional(),
+  ativo: zod.coerce.boolean().optional(),
+});
+
+export const ListMoradoresResponseItem = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  unidade: zod.string(),
+  nome: zod.string(),
+  tipo: zod.string(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListMoradoresResponse = zod.array(ListMoradoresResponseItem);
+
+/**
+ * @summary Create a resident
+ */
+export const CreateMoradorParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const CreateMoradorBody = zod.object({
+  unidade: zod.string(),
+  nome: zod.string(),
+  tipo: zod.string(),
+  telefone: zod.string().optional(),
+  email: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update a resident
+ */
+export const UpdateMoradorParams = zod.object({
+  condominioId: zod.coerce.number(),
+  moradorId: zod.coerce.number(),
+});
+
+export const UpdateMoradorBody = zod.object({
+  unidade: zod.string(),
+  nome: zod.string(),
+  tipo: zod.string(),
+  telefone: zod.string().optional(),
+  email: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+export const UpdateMoradorResponse = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  unidade: zod.string(),
+  nome: zod.string(),
+  tipo: zod.string(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a resident
+ */
+export const DeleteMoradorParams = zod.object({
+  condominioId: zod.coerce.number(),
+  moradorId: zod.coerce.number(),
+});
+
+/**
+ * @summary List financial entries for a condominium
+ */
+export const ListLancamentosParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const ListLancamentosQueryParams = zod.object({
+  tipo: zod.coerce.string().optional(),
+  status: zod.coerce.string().optional(),
+  mes: zod.coerce.string().optional(),
+});
+
+export const ListLancamentosResponseItem = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  tipo: zod.string(),
+  categoria: zod.string(),
+  descricao: zod.string(),
+  valor: zod.string(),
+  dataVencimento: zod.string(),
+  dataPagamento: zod.string().nullish(),
+  status: zod.string(),
+  observacao: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListLancamentosResponse = zod.array(ListLancamentosResponseItem);
+
+/**
+ * @summary Create a financial entry
+ */
+export const CreateLancamentoParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const CreateLancamentoBody = zod.object({
+  tipo: zod.string(),
+  categoria: zod.string(),
+  descricao: zod.string(),
+  valor: zod.string(),
+  dataVencimento: zod.string(),
+  dataPagamento: zod.string().optional(),
+  status: zod.string().optional(),
+  observacao: zod.string().optional(),
+});
+
+/**
+ * @summary Update a financial entry
+ */
+export const UpdateLancamentoParams = zod.object({
+  condominioId: zod.coerce.number(),
+  lancamentoId: zod.coerce.number(),
+});
+
+export const UpdateLancamentoBody = zod.object({
+  tipo: zod.string(),
+  categoria: zod.string(),
+  descricao: zod.string(),
+  valor: zod.string(),
+  dataVencimento: zod.string(),
+  dataPagamento: zod.string().optional(),
+  status: zod.string().optional(),
+  observacao: zod.string().optional(),
+});
+
+export const UpdateLancamentoResponse = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  tipo: zod.string(),
+  categoria: zod.string(),
+  descricao: zod.string(),
+  valor: zod.string(),
+  dataVencimento: zod.string(),
+  dataPagamento: zod.string().nullish(),
+  status: zod.string(),
+  observacao: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a financial entry
+ */
+export const DeleteLancamentoParams = zod.object({
+  condominioId: zod.coerce.number(),
+  lancamentoId: zod.coerce.number(),
+});

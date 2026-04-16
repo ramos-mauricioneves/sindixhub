@@ -27,6 +27,8 @@ export default {
     condominios: "Condominiums",
     dashboard: "Dashboard",
     ativos: "Assets",
+    moradores: "Residents",
+    financeiro: "Finances",
   },
   home: {
     title: "Condominium Inspection Assistant",

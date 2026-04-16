@@ -702,6 +702,294 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /condominios/{condominioId}/moradores:
+    get:
+      operationId: listMoradores
+      summary: List residents for a condominium
+      tags: [Moradores]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: tipo
+          schema:
+            type: string
+        - in: query
+          name: ativo
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of residents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Morador"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createMorador
+      summary: Create a resident
+      tags: [Moradores]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoradorBody"
+      responses:
+        "201":
+          description: Resident created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Morador"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /condominios/{condominioId}/moradores/{moradorId}:
+    patch:
+      operationId: updateMorador
+      summary: Update a resident
+      tags: [Moradores]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moradorId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MoradorBody"
+      responses:
+        "200":
+          description: Resident updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Morador"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteMorador
+      summary: Delete a resident
+      tags: [Moradores]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: moradorId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /condominios/{condominioId}/lancamentos:
+    get:
+      operationId: listLancamentos
+      summary: List financial entries for a condominium
+      tags: [Financeiro]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+        - in: query
+          name: tipo
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+        - in: query
+          name: mes
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of financial entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Lancamento"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createLancamento
+      summary: Create a financial entry
+      tags: [Financeiro]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LancamentoBody"
+      responses:
+        "201":
+          description: Entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lancamento"
+        "400":
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /condominios/{condominioId}/lancamentos/{lancamentoId}:
+    patch:
+      operationId: updateLancamento
+      summary: Update a financial entry
+      tags: [Financeiro]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lancamentoId
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LancamentoBody"
+      responses:
+        "200":
+          description: Entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Lancamento"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteLancamento
+      summary: Delete a financial entry
+      tags: [Financeiro]
+      parameters:
+        - in: path
+          name: condominioId
+          required: true
+          schema:
+            type: integer
+        - in: path
+          name: lancamentoId
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1082,6 +1370,124 @@ components:
         - eventosMedios
         - recentEvents
         - criticalAssets
+
+    Morador:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        unidade:
+          type: string
+        nome:
+          type: string
+        tipo:
+          type: string
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - unidade
+        - nome
+        - tipo
+        - ativo
+        - createdAt
+
+    MoradorBody:
+      type: object
+      properties:
+        unidade:
+          type: string
+        nome:
+          type: string
+        tipo:
+          type: string
+        telefone:
+          type: string
+        email:
+          type: string
+        ativo:
+          type: boolean
+      required:
+        - unidade
+        - nome
+        - tipo
+
+    Lancamento:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        tipo:
+          type: string
+        categoria:
+          type: string
+        descricao:
+          type: string
+        valor:
+          type: string
+        dataVencimento:
+          type: string
+        dataPagamento:
+          type: string
+          nullable: true
+        status:
+          type: string
+        observacao:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - tipo
+        - categoria
+        - descricao
+        - valor
+        - dataVencimento
+        - status
+        - createdAt
+
+    LancamentoBody:
+      type: object
+      properties:
+        tipo:
+          type: string
+        categoria:
+          type: string
+        descricao:
+          type: string
+        valor:
+          type: string
+        dataVencimento:
+          type: string
+        dataPagamento:
+          type: string
+        status:
+          type: string
+        observacao:
+          type: string
+      required:
+        - tipo
+        - categoria
+        - descricao
+        - valor
+        - dataVencimento
 
     ErrorResponse:
       type: object

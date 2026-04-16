@@ -301,6 +301,52 @@ export interface DashboardSummary {
   criticalAssets: Asset[];
 }
 
+export interface Morador {
+  id: number;
+  condominioId: number;
+  unidade: string;
+  nome: string;
+  tipo: string;
+  telefone?: string | null;
+  email?: string | null;
+  ativo: boolean;
+  createdAt: string;
+}
+
+export interface MoradorBody {
+  unidade: string;
+  nome: string;
+  tipo: string;
+  telefone?: string;
+  email?: string;
+  ativo?: boolean;
+}
+
+export interface Lancamento {
+  id: number;
+  condominioId: number;
+  tipo: string;
+  categoria: string;
+  descricao: string;
+  valor: string;
+  dataVencimento: string;
+  dataPagamento?: string | null;
+  status: string;
+  observacao?: string | null;
+  createdAt: string;
+}
+
+export interface LancamentoBody {
+  tipo: string;
+  categoria: string;
+  descricao: string;
+  valor: string;
+  dataVencimento: string;
+  dataPagamento?: string;
+  status?: string;
+  observacao?: string;
+}
+
 export interface ErrorResponse {
   error: string;
   details?: string;
@@ -388,4 +434,15 @@ export const ListAssetsStatus = {
 
 export type DeleteAsset200 = {
   ok: boolean;
+};
+
+export type ListMoradoresParams = {
+  tipo?: string;
+  ativo?: boolean;
+};
+
+export type ListLancamentosParams = {
+  tipo?: string;
+  status?: string;
+  mes?: string;
 };
