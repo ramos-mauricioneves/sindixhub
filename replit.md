@@ -15,6 +15,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
+- **Auth**: Clerk (`@clerk/react`, `@clerk/express`)
 
 ## Key Commands
 
@@ -26,32 +27,72 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 
 See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
 
+## Required Secrets
+
+- `CLERK_PUBLISHABLE_KEY` + `VITE_CLERK_PUBLISHABLE_KEY` — Clerk frontend publishable key (same value, two names)
+- `CLERK_SECRET_KEY` — Clerk backend secret key
+- `SESSION_SECRET` — Express session secret
+- `OPENAI_API_KEY` — for Whisper transcription and GPT-4o Vision image analysis
+- `CLAUDE_API_KEY` — for generating the professional notice via Claude Opus
+
 ## Artifacts
 
 ### Assistente de Vistoria Condominial (`artifacts/vistoria-app`)
 
-React + Vite frontend for a condominium inspection assistant. Allows building managers to upload audio recordings and images from inspections, then generates AI-powered professional notices for residents.
+React + Vite mobile-first frontend for a condominium inspection assistant. Building managers record audio and capture photos during inspections; AI generates professional notices for residents.
 
-**Features:**
-- Audio upload (sent to OpenAI Whisper for transcription)
-- Multiple image uploads with preview (analyzed via GPT-4o Vision)
-- Optional additional notes
-- AI-generated structured report (tipo, urgência, ação, resumo, comunicado) via Claude
-- Editable formal notice for residents
-- Copy to clipboard and WhatsApp send (mocked)
+**Authentication:** Clerk (ClerkProvider wraps WouterRouter internally via ClerkProviderWithRoutes pattern).
 
-**Pages:** Single page app with two states — upload form and result view.
+**Roles:**
+- `vistoriador` — creates inspections, views own history
+- `sindico` — views inspections for their condominio, creates inspections
+- `admin` — full access + user management panel
+
+**Pages:**
+- `/` — Landing page (signed-out) or role-based redirect (signed-in)
+- `/sign-in`, `/sign-up` — Clerk auth pages
+- `/app/nova-vistoria` — Create new inspection (MediaRecorder audio + camera capture)
+- `/app/historico` — Inspection history with urgência filter
+- `/app/vistoria/:id` — Inspection detail with copy/WhatsApp buttons
+- `/app/admin` — Admin user management panel
+
+**Mobile features:**
+- MediaRecorder API for in-browser audio recording (NOT file upload)
+- `<input type="file" accept="image/*" capture="environment" multiple />` for camera
+- Bottom navigation bar on mobile, sidebar on desktop
 
 ### API Server (`artifacts/api-server`)
 
-Express 5 backend with two main routes:
+Express 5 backend with Clerk authentication middleware.
+
+**Routes:**
 - `GET /api/healthz` — health check
-- `POST /api/generate-report` — multipart form, accepts audio + images + notes, returns InspectionReport
+- `POST /api/generate-report` — multipart form, accepts audio + images + notes
+- `GET /api/users/me` — get/create current user profile
+- `GET /api/users` — list all users (admin only)
+- `PATCH /api/users/:clerkId/role` — update user role/condominio (admin only)
+- `GET /api/inspections` — list inspections (scoped by role)
+- `POST /api/inspections` — save inspection record
+- `GET /api/inspections/:id` — get single inspection
 
 **Services:**
 - `src/services/openai-service.ts` — audio transcription (Whisper) + image analysis (GPT-4o Vision)
-- `src/services/claude-service.ts` — structured report generation (Claude claude-opus-4-5)
+- `src/services/claude-service.ts` — structured report generation (Claude Opus)
 
-**Required secrets:**
-- `OPENAI_API_KEY` — for Whisper transcription and GPT-4o Vision image analysis
-- `CLAUDE_API_KEY` — for generating the professional notice via Claude
+**Middleware:**
+- `src/middlewares/requireAuth.ts` — Clerk auth check + role helpers + upsertUser
+- `src/middlewares/clerkProxyMiddleware.ts` — Clerk proxy for dev/prod
+
+## Database Schema (`lib/db`)
+
+- `usersTable` — clerkId, email, name, role (admin|sindico|vistoriador), condominio, createdAt
+- `inspectionsTable` — tipo, urgencia, acao, resumo, comunicado, transcricao, analise_imagens, local, condominio, createdByClerkId, createdAt
+
+## API Spec (`lib/api-spec`)
+
+OpenAPI YAML at `lib/api-spec/openapi.yaml`. Run codegen after any changes:
+```
+pnpm --filter @workspace/api-spec run codegen
+```
+Generated hooks in `lib/api-client-react/src/generated/api.ts`.
+Generated Zod schemas in `lib/api-zod/src/generated/api.ts`.

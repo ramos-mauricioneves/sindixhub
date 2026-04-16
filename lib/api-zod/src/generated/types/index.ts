@@ -3,11 +3,22 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export * from "./errorResponse";
 export * from "./generateReportBody";
 export * from "./healthStatus";
+export * from "./inspectionListResponse";
 export * from "./inspectionReport";
 export * from "./inspectionReportUrgencia";
+export * from "./listInspectionsParams";
+export * from "./listInspectionsUrgencia";
+export * from "./savedInspection";
+export * from "./savedInspectionUrgencia";
+export * from "./saveInspectionBody";
+export * from "./saveInspectionBodyUrgencia";
+export * from "./updateUserRoleBody";
+export * from "./updateUserRoleBodyRole";
+export * from "./userProfile";
+export * from "./userProfileRole";

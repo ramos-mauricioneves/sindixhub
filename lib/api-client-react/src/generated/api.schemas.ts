@@ -3,15 +3,12 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
 }
 
-/**
- * Urgency level
- */
 export type InspectionReportUrgencia =
   (typeof InspectionReportUrgencia)[keyof typeof InspectionReportUrgencia];
 
@@ -22,20 +19,98 @@ export const InspectionReportUrgencia = {
 } as const;
 
 export interface InspectionReport {
-  /** Type of the problem identified */
   tipo: string;
-  /** Urgency level */
   urgencia: InspectionReportUrgencia;
-  /** Recommended action */
   acao: string;
-  /** Short summary (up to 2 lines) */
   resumo: string;
-  /** Formal notice for residents */
   comunicado: string;
-  /** Audio transcription */
   transcricao?: string;
-  /** Image analysis result */
   analise_imagens?: string;
+}
+
+export type SaveInspectionBodyUrgencia =
+  (typeof SaveInspectionBodyUrgencia)[keyof typeof SaveInspectionBodyUrgencia];
+
+export const SaveInspectionBodyUrgencia = {
+  baixa: "baixa",
+  média: "média",
+  alta: "alta",
+} as const;
+
+export interface SaveInspectionBody {
+  tipo: string;
+  urgencia: SaveInspectionBodyUrgencia;
+  acao: string;
+  resumo: string;
+  comunicado: string;
+  transcricao?: string;
+  analise_imagens?: string;
+  local?: string;
+  condominio?: string;
+}
+
+export type SavedInspectionUrgencia =
+  (typeof SavedInspectionUrgencia)[keyof typeof SavedInspectionUrgencia];
+
+export const SavedInspectionUrgencia = {
+  baixa: "baixa",
+  média: "média",
+  alta: "alta",
+} as const;
+
+export interface SavedInspection {
+  id: number;
+  tipo: string;
+  urgencia: SavedInspectionUrgencia;
+  acao: string;
+  resumo: string;
+  comunicado: string;
+  transcricao?: string;
+  analise_imagens?: string;
+  local?: string;
+  condominio?: string;
+  createdByClerkId: string;
+  createdAt: string;
+}
+
+export interface InspectionListResponse {
+  inspections: SavedInspection[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export type UserProfileRole =
+  (typeof UserProfileRole)[keyof typeof UserProfileRole];
+
+export const UserProfileRole = {
+  admin: "admin",
+  sindico: "sindico",
+  vistoriador: "vistoriador",
+} as const;
+
+export interface UserProfile {
+  id: number;
+  clerkId: string;
+  email: string;
+  name?: string;
+  role: UserProfileRole;
+  condominio?: string;
+  createdAt: string;
+}
+
+export type UpdateUserRoleBodyRole =
+  (typeof UpdateUserRoleBodyRole)[keyof typeof UpdateUserRoleBodyRole];
+
+export const UpdateUserRoleBodyRole = {
+  admin: "admin",
+  sindico: "sindico",
+  vistoriador: "vistoriador",
+} as const;
+
+export interface UpdateUserRoleBody {
+  role: UpdateUserRoleBodyRole;
+  condominio?: string;
 }
 
 export interface ErrorResponse {
@@ -44,10 +119,22 @@ export interface ErrorResponse {
 }
 
 export type GenerateReportBody = {
-  /** Audio file of the inspection */
   audio: Blob;
-  /** Images from the inspection */
   images?: Blob[];
-  /** Optional additional observations */
   notes?: string;
 };
+
+export type ListInspectionsParams = {
+  page?: number;
+  limit?: number;
+  urgencia?: ListInspectionsUrgencia;
+};
+
+export type ListInspectionsUrgencia =
+  (typeof ListInspectionsUrgencia)[keyof typeof ListInspectionsUrgencia];
+
+export const ListInspectionsUrgencia = {
+  baixa: "baixa",
+  média: "média",
+  alta: "alta",
+} as const;

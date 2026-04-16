@@ -5,14 +5,16 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.2.0
  */
-import type { InspectionReportUrgencia } from "./inspectionReportUrgencia";
+import type { SaveInspectionBodyUrgencia } from "./saveInspectionBodyUrgencia";
 
-export interface InspectionReport {
+export interface SaveInspectionBody {
   tipo: string;
-  urgencia: InspectionReportUrgencia;
+  urgencia: SaveInspectionBodyUrgencia;
   acao: string;
   resumo: string;
   comunicado: string;
   transcricao?: string;
   analise_imagens?: string;
+  local?: string;
+  condominio?: string;
 }

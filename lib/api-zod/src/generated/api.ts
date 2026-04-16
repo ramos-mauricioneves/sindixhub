@@ -3,12 +3,11 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -16,24 +15,140 @@ export const HealthCheckResponse = zod.object({
 });
 
 /**
- * Transcribes audio, analyzes images, and generates a professional condominium notice
  * @summary Generate inspection report
  */
 export const GenerateReportBody = zod.object({
-  audio: zod.instanceof(File).describe("Audio file of the inspection"),
-  images: zod
-    .array(zod.instanceof(File))
-    .optional()
-    .describe("Images from the inspection"),
-  notes: zod.string().optional().describe("Optional additional observations"),
+  audio: zod.instanceof(File),
+  images: zod.array(zod.instanceof(File)).optional(),
+  notes: zod.string().optional(),
 });
 
 export const GenerateReportResponse = zod.object({
-  tipo: zod.string().describe("Type of the problem identified"),
-  urgencia: zod.enum(["baixa", "média", "alta"]).describe("Urgency level"),
-  acao: zod.string().describe("Recommended action"),
-  resumo: zod.string().describe("Short summary (up to 2 lines)"),
-  comunicado: zod.string().describe("Formal notice for residents"),
-  transcricao: zod.string().optional().describe("Audio transcription"),
-  analise_imagens: zod.string().optional().describe("Image analysis result"),
+  tipo: zod.string(),
+  urgencia: zod.enum(["baixa", "média", "alta"]),
+  acao: zod.string(),
+  resumo: zod.string(),
+  comunicado: zod.string(),
+  transcricao: zod.string().optional(),
+  analise_imagens: zod.string().optional(),
+});
+
+/**
+ * @summary List inspections
+ */
+export const listInspectionsQueryPageDefault = 1;
+export const listInspectionsQueryLimitDefault = 20;
+
+export const ListInspectionsQueryParams = zod.object({
+  page: zod.coerce.number().default(listInspectionsQueryPageDefault),
+  limit: zod.coerce.number().default(listInspectionsQueryLimitDefault),
+  urgencia: zod.enum(["baixa", "média", "alta"]).optional(),
+});
+
+export const ListInspectionsResponse = zod.object({
+  inspections: zod.array(
+    zod.object({
+      id: zod.number(),
+      tipo: zod.string(),
+      urgencia: zod.enum(["baixa", "média", "alta"]),
+      acao: zod.string(),
+      resumo: zod.string(),
+      comunicado: zod.string(),
+      transcricao: zod.string().optional(),
+      analise_imagens: zod.string().optional(),
+      local: zod.string().optional(),
+      condominio: zod.string().optional(),
+      createdByClerkId: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  limit: zod.number(),
+});
+
+/**
+ * @summary Save an inspection report to history
+ */
+export const SaveInspectionBody = zod.object({
+  tipo: zod.string(),
+  urgencia: zod.enum(["baixa", "média", "alta"]),
+  acao: zod.string(),
+  resumo: zod.string(),
+  comunicado: zod.string(),
+  transcricao: zod.string().optional(),
+  analise_imagens: zod.string().optional(),
+  local: zod.string().optional(),
+  condominio: zod.string().optional(),
+});
+
+/**
+ * @summary Get a single inspection
+ */
+export const GetInspectionParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetInspectionResponse = zod.object({
+  id: zod.number(),
+  tipo: zod.string(),
+  urgencia: zod.enum(["baixa", "média", "alta"]),
+  acao: zod.string(),
+  resumo: zod.string(),
+  comunicado: zod.string(),
+  transcricao: zod.string().optional(),
+  analise_imagens: zod.string().optional(),
+  local: zod.string().optional(),
+  condominio: zod.string().optional(),
+  createdByClerkId: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get current user profile
+ */
+export const GetMeResponse = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  email: zod.string(),
+  name: zod.string().optional(),
+  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  condominio: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List all users (admin only)
+ */
+export const ListUsersResponseItem = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  email: zod.string(),
+  name: zod.string().optional(),
+  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  condominio: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
+ * @summary Update user role (admin only)
+ */
+export const UpdateUserRoleParams = zod.object({
+  clerkId: zod.coerce.string(),
+});
+
+export const UpdateUserRoleBody = zod.object({
+  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  condominio: zod.string().optional(),
+});
+
+export const UpdateUserRoleResponse = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  email: zod.string(),
+  name: zod.string().optional(),
+  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  condominio: zod.string().optional(),
+  createdAt: zod.coerce.date(),
 });

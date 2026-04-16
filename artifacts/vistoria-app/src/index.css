@@ -50,7 +50,8 @@
 }
 
 :root {
-  --background: 210 20% 96%;
+  /* Civic reliability: Trustworthy deep slate blue, crisp paper-like backgrounds */
+  --background: 210 40% 98%;
   --foreground: 222.2 84% 4.9%;
 
   --card: 0 0% 100%;
@@ -61,7 +62,7 @@
   --popover-foreground: 222.2 84% 4.9%;
   --popover-border: 214.3 31.8% 91.4%;
 
-  --primary: 215 25% 27%;
+  --primary: 221.2 83.2% 33.3%;
   --primary-foreground: 210 40% 98%;
 
   --secondary: 210 40% 96.1%;
@@ -78,9 +79,9 @@
 
   --border: 214.3 31.8% 91.4%;
   --input: 214.3 31.8% 91.4%;
-  --ring: 215 25% 27%;
+  --ring: 221.2 83.2% 33.3%;
 
-  --radius: 0.75rem;
+  --radius: 0.5rem;
 
   --app-font-sans: "Inter", sans-serif;
   --app-font-serif: Georgia, serif;
@@ -99,7 +100,7 @@
   --popover-foreground: 210 40% 98%;
   --popover-border: 214.3 31.8% 15%;
 
-  --primary: 210 40% 98%;
+  --primary: 217.2 91.2% 59.8%;
   --primary-foreground: 222.2 47.4% 11.2%;
 
   --secondary: 217.2 32.6% 17.5%;
@@ -116,7 +117,7 @@
 
   --border: 217.2 32.6% 17.5%;
   --input: 217.2 32.6% 17.5%;
-  --ring: 212.7 26.8% 83.9%;
+  --ring: 224.3 76.3% 48%;
 }
 
 @layer base {

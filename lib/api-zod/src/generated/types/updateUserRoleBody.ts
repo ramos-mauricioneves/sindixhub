@@ -5,7 +5,9 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.2.0
  */
+import type { UpdateUserRoleBodyRole } from "./updateUserRoleBodyRole";
 
-export interface HealthStatus {
-  status: string;
+export interface UpdateUserRoleBody {
+  role: UpdateUserRoleBodyRole;
+  condominio?: string;
 }

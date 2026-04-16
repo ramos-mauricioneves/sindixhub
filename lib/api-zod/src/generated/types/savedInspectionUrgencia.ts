@@ -6,10 +6,10 @@
  * OpenAPI spec version: 0.2.0
  */
 
-export type InspectionReportUrgencia =
-  (typeof InspectionReportUrgencia)[keyof typeof InspectionReportUrgencia];
+export type SavedInspectionUrgencia =
+  (typeof SavedInspectionUrgencia)[keyof typeof SavedInspectionUrgencia];
 
-export const InspectionReportUrgencia = {
+export const SavedInspectionUrgencia = {
   baixa: "baixa",
   média: "média",
   alta: "alta",

@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * API specification for Assistente de Vistoria Condominial
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 
 export interface ErrorResponse {

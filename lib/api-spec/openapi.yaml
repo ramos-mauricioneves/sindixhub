@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
-  version: 0.1.0
+  version: 0.2.0
   description: API specification for Assistente de Vistoria Condominial
 servers:
   - url: /api
@@ -12,13 +12,16 @@ tags:
     description: Health operations
   - name: report
     description: Condominium inspection report operations
+  - name: users
+    description: User management
+  - name: inspections
+    description: Inspection history
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -26,12 +29,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
   /generate-report:
     post:
       operationId: generateReport
       tags: [report]
       summary: Generate inspection report
-      description: Transcribes audio, analyzes images, and generates a professional condominium notice
       requestBody:
         required: true
         content:
@@ -42,21 +45,18 @@ paths:
                 audio:
                   type: string
                   format: binary
-                  description: Audio file of the inspection
                 images:
                   type: array
                   items:
                     type: string
                     format: binary
-                  description: Images from the inspection
                 notes:
                   type: string
-                  description: Optional additional observations
               required:
                 - audio
       responses:
         "200":
-          description: Report generated successfully
+          description: Report generated
           content:
             application/json:
               schema:
@@ -73,6 +73,173 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /inspections:
+    get:
+      operationId: listInspections
+      tags: [inspections]
+      summary: List inspections
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: urgencia
+          in: query
+          schema:
+            type: string
+            enum: [baixa, média, alta]
+      responses:
+        "200":
+          description: List of inspections
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: saveInspection
+      tags: [inspections]
+      summary: Save an inspection report to history
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveInspectionBody"
+      responses:
+        "201":
+          description: Inspection saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedInspection"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /inspections/{id}:
+    get:
+      operationId: getInspection
+      tags: [inspections]
+      summary: Get a single inspection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Inspection details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedInspection"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin only)
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{clerkId}/role:
+    patch:
+      operationId: updateUserRole
+      tags: [users]
+      summary: Update user role (admin only)
+      parameters:
+        - name: clerkId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRoleBody"
+      responses:
+        "200":
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -82,37 +249,156 @@ components:
           type: string
       required:
         - status
+
     InspectionReport:
       type: object
       properties:
         tipo:
           type: string
-          description: Type of the problem identified
         urgencia:
           type: string
           enum: [baixa, média, alta]
-          description: Urgency level
         acao:
           type: string
-          description: Recommended action
         resumo:
           type: string
-          description: Short summary (up to 2 lines)
         comunicado:
           type: string
-          description: Formal notice for residents
         transcricao:
           type: string
-          description: Audio transcription
         analise_imagens:
           type: string
-          description: Image analysis result
       required:
         - tipo
         - urgencia
         - acao
         - resumo
         - comunicado
+
+    SaveInspectionBody:
+      type: object
+      properties:
+        tipo:
+          type: string
+        urgencia:
+          type: string
+          enum: [baixa, média, alta]
+        acao:
+          type: string
+        resumo:
+          type: string
+        comunicado:
+          type: string
+        transcricao:
+          type: string
+        analise_imagens:
+          type: string
+        local:
+          type: string
+        condominio:
+          type: string
+      required:
+        - tipo
+        - urgencia
+        - acao
+        - resumo
+        - comunicado
+
+    SavedInspection:
+      type: object
+      properties:
+        id:
+          type: integer
+        tipo:
+          type: string
+        urgencia:
+          type: string
+          enum: [baixa, média, alta]
+        acao:
+          type: string
+        resumo:
+          type: string
+        comunicado:
+          type: string
+        transcricao:
+          type: string
+        analise_imagens:
+          type: string
+        local:
+          type: string
+        condominio:
+          type: string
+        createdByClerkId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - tipo
+        - urgencia
+        - acao
+        - resumo
+        - comunicado
+        - createdByClerkId
+        - createdAt
+
+    InspectionListResponse:
+      type: object
+      properties:
+        inspections:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedInspection"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required:
+        - inspections
+        - total
+        - page
+        - limit
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum: [admin, sindico, vistoriador]
+        condominio:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clerkId
+        - email
+        - role
+        - createdAt
+
+    UpdateUserRoleBody:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [admin, sindico, vistoriador]
+        condominio:
+          type: string
+      required:
+        - role
+
     ErrorResponse:
       type: object
       properties:
