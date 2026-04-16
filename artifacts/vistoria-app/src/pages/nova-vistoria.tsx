@@ -2,7 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2, Stethoscope, Wrench, Zap, TrendingUp } from "lucide-react";
+import {
+  Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2,
+  Stethoscope, Wrench, Zap, TrendingUp, ClipboardCheck, HardHat, Calendar,
+  CalendarDays, Key, Siren, MapPin, Users, Clock
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,11 +15,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useGenerateReport, useSaveInspection,
   useListCondominios, useListAreas, useListAssets,
   getListInspectionsQueryKey, getListCondominiosQueryKey, getListAreasQueryKey, getListAssetsQueryKey,
-  InspectionReport
+  InspectionReport, Area
 } from "@workspace/api-client-react";
 
 const TIPO_EVENTO_OPTIONS = [
@@ -25,10 +30,47 @@ const TIPO_EVENTO_OPTIONS = [
   { value: "melhoria", icon: TrendingUp, labelKey: "novaVistoria_tipoEvento.melhoria", color: "text-purple-600 border-purple-300 bg-purple-50" },
 ];
 
+const TIPO_VISTORIA_OPTIONS = [
+  { value: "tecnica", icon: Stethoscope, labelKey: "novaVistoria_tipoVistoria.tecnica", color: "text-blue-700 border-blue-200 bg-blue-50" },
+  { value: "predial", icon: HardHat, labelKey: "novaVistoria_tipoVistoria.predial", color: "text-amber-700 border-amber-200 bg-amber-50" },
+  { value: "checklist", icon: ClipboardCheck, labelKey: "novaVistoria_tipoVistoria.checklist", color: "text-green-700 border-green-200 bg-green-50" },
+  { value: "acompanhamento_diario", icon: Calendar, labelKey: "novaVistoria_tipoVistoria.acompanhamento_diario", color: "text-cyan-700 border-cyan-200 bg-cyan-50" },
+  { value: "acompanhamento_semanal", icon: CalendarDays, labelKey: "novaVistoria_tipoVistoria.acompanhamento_semanal", color: "text-indigo-700 border-indigo-200 bg-indigo-50" },
+  { value: "entrega_chaves", icon: Key, labelKey: "novaVistoria_tipoVistoria.entrega_chaves", color: "text-emerald-700 border-emerald-200 bg-emerald-50" },
+  { value: "emergencial", icon: Siren, labelKey: "novaVistoria_tipoVistoria.emergencial", color: "text-red-700 border-red-200 bg-red-50" },
+];
+
+const AREA_TIPO_COLORS: Record<string, string> = {
+  comum: "bg-blue-50 text-blue-700",
+  lazer: "bg-green-50 text-green-700",
+  esportiva: "bg-orange-50 text-orange-700",
+  social: "bg-purple-50 text-purple-700",
+  servico: "bg-gray-50 text-gray-700",
+  estacionamento: "bg-yellow-50 text-yellow-800",
+  infantil: "bg-pink-50 text-pink-700",
+  predial: "bg-red-50 text-red-700",
+  administrativa: "bg-indigo-50 text-indigo-700",
+};
+
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
+}
+
+function AreaTypeName({ tipo, t }: { tipo: string; t: (k: string) => string }) {
+  const labels: Record<string, string> = {
+    comum: t("condominios.tipoComum"),
+    lazer: t("condominios.tipoLazer"),
+    esportiva: t("condominios.tipoEsportiva"),
+    social: t("condominios.tipoSocial"),
+    servico: t("condominios.tipoServico"),
+    estacionamento: t("condominios.tipoEstacionamento"),
+    infantil: t("condominios.tipoInfantil"),
+    predial: t("condominios.tipoPredial"),
+    administrativa: t("condominios.tipoAdministrativa"),
+  };
+  return <>{labels[tipo] || tipo}</>;
 }
 
 export default function NovaVistoriaPage() {
@@ -51,6 +93,9 @@ export default function NovaVistoriaPage() {
   const [areaId, setAreaId] = useState<string>("");
   const [assetId, setAssetId] = useState<string>("");
   const [tipoEvento, setTipoEvento] = useState<string>("vistoria");
+  const [tipoVistoria, setTipoVistoria] = useState<string>("tecnica");
+  const [escopo, setEscopo] = useState<string>("completa");
+  const [selectedAreaIds, setSelectedAreaIds] = useState<Set<number>>(new Set());
 
   const { data: condominios } = useListCondominios({
     query: { queryKey: getListCondominiosQueryKey() }
@@ -89,8 +134,25 @@ export default function NovaVistoriaPage() {
   }, [generateReport.isPending, t]);
 
   useEffect(() => {
-    if (condominioId) { setAreaId(""); setAssetId(""); }
+    setAreaId(""); setAssetId(""); setSelectedAreaIds(new Set()); setEscopo("completa");
   }, [condominioId]);
+
+  const toggleAreaSelection = (id: number) => {
+    setSelectedAreaIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const groupedAreas = (areas || []).reduce<Record<string, Area[]>>((acc, area) => {
+    if (!area.ativo) return acc;
+    const tipo = area.tipo;
+    if (!acc[tipo]) acc[tipo] = [];
+    acc[tipo].push(area);
+    return acc;
+  }, {});
 
   const startRecording = async () => {
     try {
@@ -146,7 +208,20 @@ export default function NovaVistoriaPage() {
 
   const handleSave = () => {
     if (!report) return;
+
+    const isVistoria = tipoEvento === "vistoria";
+    const selectedAreasArray = Array.from(selectedAreaIds);
+
+    if (isVistoria && escopo === "areas_especificas" && selectedAreasArray.length === 0) {
+      toast({ title: t("novaVistoria_escopo.selectAreas"), variant: "destructive" });
+      return;
+    }
+
     const condominioName = condominioId ? condominios?.find(c => c.id === parseInt(condominioId, 10))?.nome : undefined;
+    const primaryAreaId = escopo === "areas_especificas" && selectedAreasArray.length > 0
+      ? selectedAreasArray[0]
+      : (areaId ? parseInt(areaId, 10) : undefined);
+
     saveInspection.mutate({
       data: {
         tipo: report.tipo,
@@ -159,9 +234,12 @@ export default function NovaVistoriaPage() {
         local: local || undefined,
         condominio: condominioName,
         condominioId: condominioId ? parseInt(condominioId, 10) : undefined,
-        areaId: areaId ? parseInt(areaId, 10) : undefined,
+        areaId: primaryAreaId,
         assetId: assetId ? parseInt(assetId, 10) : undefined,
         tipoEvento: tipoEvento as any,
+        tipoVistoria: isVistoria ? tipoVistoria as any : undefined,
+        escopo: isVistoria ? escopo as any : undefined,
+        areasIds: isVistoria && selectedAreasArray.length > 0 ? selectedAreasArray.join(",") : undefined,
       }
     }, {
       onSuccess: () => {
@@ -179,6 +257,8 @@ export default function NovaVistoriaPage() {
     return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
   };
 
+  const showTipoVistoria = tipoEvento === "vistoria";
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto pb-12">
       <div>
@@ -188,7 +268,6 @@ export default function NovaVistoriaPage() {
 
       <Card>
         <CardContent className="pt-6 space-y-6">
-          {/* Event Type Selector */}
           <div className="space-y-2">
             <Label className="text-sm font-medium">{t("novaVistoria_tipoEvento.label")}</Label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -212,7 +291,31 @@ export default function NovaVistoriaPage() {
             </div>
           </div>
 
-          {/* Audio Section */}
+          {showTipoVistoria && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">{t("novaVistoria_tipoVistoria.label")}</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {TIPO_VISTORIA_OPTIONS.map((opt) => {
+                  const Icon = opt.icon;
+                  const isSelected = tipoVistoria === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setTipoVistoria(opt.value)}
+                      className={`flex items-center gap-2 px-2.5 py-2 rounded-lg border-2 text-xs font-medium transition-all ${
+                        isSelected ? `${opt.color} border-current` : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <Icon className="h-3.5 w-3.5 flex-shrink-0" />
+                      <span className="truncate">{t(opt.labelKey as any)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-col items-center justify-center py-6 space-y-4 rounded-lg bg-muted/50 border border-dashed">
             {!audioBlob ? (
               <>
@@ -250,9 +353,7 @@ export default function NovaVistoriaPage() {
             )}
           </div>
 
-          {/* Form Fields */}
           <div className="space-y-4">
-            {/* Condomínio selector */}
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground" />
@@ -261,50 +362,148 @@ export default function NovaVistoriaPage() {
               {condominios && condominios.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("novaVistoria.noCondominios")}</p>
               ) : (
-                <Select value={condominioId} onValueChange={setCondominioId}>
+                <Select value={condominioId || "__none__"} onValueChange={(v) => setCondominioId(v === "__none__" ? "" : v)}>
                   <SelectTrigger data-testid="select-condominio">
                     <SelectValue placeholder={t("novaVistoria.condominioPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t("common.none")}</SelectItem>
+                    <SelectItem value="__none__">{t("common.none")}</SelectItem>
                     {condominios?.map(c => (
-                      <SelectItem key={c.id} value={String(c.id)}>{c.nome}</SelectItem>
+                      <SelectItem key={c.id} value={String(c.id)}>
+                        {c.nome}
+                        {c.cidade && <span className="text-muted-foreground text-xs ml-1">— {c.cidade}/{c.estado}</span>}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </div>
 
-            {/* Área selector */}
-            {condominioId && (
-              <div className="space-y-2">
-                <Label>{t("novaVistoria.areaLabel")}</Label>
-                <Select value={areaId} onValueChange={setAreaId}>
-                  <SelectTrigger data-testid="select-area">
-                    <SelectValue placeholder={t("novaVistoria.areaPlaceholder")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">{t("common.none")}</SelectItem>
-                    {areas?.map(a => (
-                      <SelectItem key={a.id} value={String(a.id)}>
-                        {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {condominioId && areas && (
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  {t("novaVistoria_escopo.label")}
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEscopo("completa"); setSelectedAreaIds(new Set()); }}
+                    className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-all ${
+                      escopo === "completa"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span className="font-medium text-sm">{t("novaVistoria_escopo.completa")}</span>
+                    <span className="text-xs mt-0.5 opacity-75">{t("novaVistoria_escopo.completaDesc")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEscopo("areas_especificas")}
+                    className={`flex flex-col items-start p-3 rounded-lg border-2 text-left transition-all ${
+                      escopo === "areas_especificas"
+                        ? "border-primary bg-primary/5 text-primary"
+                        : "border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span className="font-medium text-sm">{t("novaVistoria_escopo.areas_especificas")}</span>
+                    <span className="text-xs mt-0.5 opacity-75">{t("novaVistoria_escopo.areas_especificasDesc")}</span>
+                  </button>
+                </div>
+
+                {escopo === "areas_especificas" && (
+                  <div className="border rounded-lg p-3 space-y-3 bg-muted/30">
+                    {areas.length === 0 ? (
+                      <div className="text-center py-4">
+                        <MapPin className="h-6 w-6 mx-auto mb-2 text-muted-foreground opacity-40" />
+                        <p className="text-sm text-muted-foreground">{t("novaVistoria_escopo.noAreasRegistered")}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{t("novaVistoria_escopo.registerAreasHint")}</p>
+                      </div>
+                    ) : (
+                      <>
+                        {selectedAreaIds.size > 0 && (
+                          <p className="text-xs font-medium text-primary">
+                            {selectedAreaIds.size} {t("novaVistoria_escopo.selectedAreas")}
+                          </p>
+                        )}
+                        {Object.keys(groupedAreas).map(tipo => (
+                          <div key={tipo}>
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full uppercase tracking-wider ${AREA_TIPO_COLORS[tipo] || "bg-gray-100 text-gray-700"}`}>
+                                <AreaTypeName tipo={tipo} t={t} />
+                              </span>
+                            </div>
+                            <div className="space-y-1 ml-1">
+                              {groupedAreas[tipo].map(area => (
+                                <label
+                                  key={area.id}
+                                  className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+                                    selectedAreaIds.has(area.id) ? "bg-primary/10 border border-primary/20" : "hover:bg-muted border border-transparent"
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={selectedAreaIds.has(area.id)}
+                                    onCheckedChange={() => toggleAreaSelection(area.id)}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-sm font-medium">{area.nome}</span>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      {area.capacidade && (
+                                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                          <Users className="h-2.5 w-2.5" />{area.capacidade}
+                                        </span>
+                                      )}
+                                      {area.horarioAbertura && area.horarioFechamento && (
+                                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                                          <Clock className="h-2.5 w-2.5" />{area.horarioAbertura}–{area.horarioFechamento}
+                                        </span>
+                                      )}
+                                      {area.reservavel && (
+                                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">{t("condominios.areaReservavel")}</Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {escopo === "completa" && condominioId && (
+                  <div className="space-y-2">
+                    <Label>{t("novaVistoria.areaLabel")}</Label>
+                    <Select value={areaId || "__none__"} onValueChange={(v) => setAreaId(v === "__none__" ? "" : v)}>
+                      <SelectTrigger data-testid="select-area">
+                        <SelectValue placeholder={t("novaVistoria.areaPlaceholder")} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__none__">{t("common.none")}</SelectItem>
+                        {areas?.map(a => (
+                          <SelectItem key={a.id} value={String(a.id)}>
+                            {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             )}
 
-            {/* Asset selector */}
             {condominioId && assets && assets.length > 0 && (
               <div className="space-y-2">
                 <Label>{t("novaVistoria_tipoEvento.assetLabel")}</Label>
-                <Select value={assetId} onValueChange={setAssetId}>
+                <Select value={assetId || "__none__"} onValueChange={(v) => setAssetId(v === "__none__" ? "" : v)}>
                   <SelectTrigger data-testid="select-asset">
                     <SelectValue placeholder={t("novaVistoria_tipoEvento.assetPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">{t("common.none")}</SelectItem>
+                    <SelectItem value="__none__">{t("common.none")}</SelectItem>
                     {assets.map(a => (
                       <SelectItem key={a.id} value={String(a.id)}>
                         {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
@@ -367,7 +566,19 @@ export default function NovaVistoriaPage() {
           <div className="bg-primary/5 px-6 py-4 border-b">
             <div className="flex items-start justify-between">
               <div>
-                <Badge variant="outline" className="mb-2 bg-background">{report.tipo}</Badge>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge variant="outline" className="bg-background">{report.tipo}</Badge>
+                  {showTipoVistoria && tipoVistoria && (
+                    <Badge variant="secondary" className="text-xs">
+                      {t(`novaVistoria_tipoVistoria.${tipoVistoria}` as any)}
+                    </Badge>
+                  )}
+                  {escopo === "areas_especificas" && selectedAreaIds.size > 0 && (
+                    <Badge variant="outline" className="text-xs">
+                      {selectedAreaIds.size} {t("novaVistoria_escopo.selectedAreas")}
+                    </Badge>
+                  )}
+                </div>
                 <h2 className="text-xl font-bold">{report.resumo}</h2>
               </div>
               <Badge className={getUrgenciaColor(report.urgencia)} variant="secondary">

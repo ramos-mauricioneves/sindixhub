@@ -72,6 +72,9 @@ router.post("/inspections", requireAuth, async (req, res): Promise<void> => {
   const areaId = typeof req.body.areaId === "number" ? req.body.areaId : null;
   const assetId = typeof req.body.assetId === "number" ? req.body.assetId : null;
   const tipoEvento = typeof req.body.tipoEvento === "string" ? req.body.tipoEvento : "vistoria";
+  const tipoVistoria = typeof req.body.tipoVistoria === "string" ? req.body.tipoVistoria : null;
+  const escopo = typeof req.body.escopo === "string" ? req.body.escopo : "completa";
+  const areasIds = typeof req.body.areasIds === "string" ? req.body.areasIds : null;
   const condominio = parsed.data.condominio ?? user.condominio ?? null;
 
   const [saved] = await db.insert(inspectionsTable).values({
@@ -89,6 +92,9 @@ router.post("/inspections", requireAuth, async (req, res): Promise<void> => {
     areaId,
     assetId,
     tipoEvento,
+    tipoVistoria,
+    escopo,
+    areasIds,
     createdByClerkId: auth.userId,
   }).returning();
 

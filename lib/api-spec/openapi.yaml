@@ -1084,6 +1084,14 @@ components:
         tipoEvento:
           type: string
           enum: [vistoria, manutencao, incidente, melhoria]
+        tipoVistoria:
+          type: string
+          enum: [tecnica, predial, checklist, acompanhamento_diario, acompanhamento_semanal, entrega_chaves, emergencial]
+        escopo:
+          type: string
+          enum: [completa, areas_especificas]
+        areasIds:
+          type: string
       required:
         - tipo
         - urgencia
@@ -1136,6 +1144,16 @@ components:
         tipoEvento:
           type: string
           enum: [vistoria, manutencao, incidente, melhoria]
+        tipoVistoria:
+          type: string
+          nullable: true
+          enum: [tecnica, predial, checklist, acompanhamento_diario, acompanhamento_semanal, entrega_chaves, emergencial]
+        escopo:
+          type: string
+          enum: [completa, areas_especificas]
+        areasIds:
+          type: string
+          nullable: true
         createdByClerkId:
           type: string
         createdAt:
@@ -1150,6 +1168,7 @@ components:
         - comunicado
         - status
         - tipoEvento
+        - escopo
         - createdByClerkId
         - createdAt
 

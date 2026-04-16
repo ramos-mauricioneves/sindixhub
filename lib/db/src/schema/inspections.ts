@@ -18,6 +18,9 @@ export const inspectionsTable = pgTable("inspections", {
   areaId: integer("area_id"),
   assetId: integer("asset_id"),
   tipoEvento: text("tipo_evento").notNull().default("vistoria"),
+  tipoVistoria: text("tipo_vistoria"),
+  escopo: text("escopo").notNull().default("completa"),
+  areasIds: text("areas_ids"),
   createdByClerkId: text("created_by_clerk_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

@@ -47,6 +47,27 @@ export const SaveInspectionBodyTipoEvento = {
   melhoria: "melhoria",
 } as const;
 
+export type SaveInspectionBodyTipoVistoria =
+  (typeof SaveInspectionBodyTipoVistoria)[keyof typeof SaveInspectionBodyTipoVistoria];
+
+export const SaveInspectionBodyTipoVistoria = {
+  tecnica: "tecnica",
+  predial: "predial",
+  checklist: "checklist",
+  acompanhamento_diario: "acompanhamento_diario",
+  acompanhamento_semanal: "acompanhamento_semanal",
+  entrega_chaves: "entrega_chaves",
+  emergencial: "emergencial",
+} as const;
+
+export type SaveInspectionBodyEscopo =
+  (typeof SaveInspectionBodyEscopo)[keyof typeof SaveInspectionBodyEscopo];
+
+export const SaveInspectionBodyEscopo = {
+  completa: "completa",
+  areas_especificas: "areas_especificas",
+} as const;
+
 export interface SaveInspectionBody {
   tipo: string;
   urgencia: SaveInspectionBodyUrgencia;
@@ -61,6 +82,9 @@ export interface SaveInspectionBody {
   areaId?: number;
   assetId?: number;
   tipoEvento?: SaveInspectionBodyTipoEvento;
+  tipoVistoria?: SaveInspectionBodyTipoVistoria;
+  escopo?: SaveInspectionBodyEscopo;
+  areasIds?: string;
 }
 
 export type UpdateInspectionStatusBodyStatus =
@@ -104,6 +128,28 @@ export const SavedInspectionTipoEvento = {
   melhoria: "melhoria",
 } as const;
 
+export type SavedInspectionTipoVistoria =
+  | (typeof SavedInspectionTipoVistoria)[keyof typeof SavedInspectionTipoVistoria]
+  | null;
+
+export const SavedInspectionTipoVistoria = {
+  tecnica: "tecnica",
+  predial: "predial",
+  checklist: "checklist",
+  acompanhamento_diario: "acompanhamento_diario",
+  acompanhamento_semanal: "acompanhamento_semanal",
+  entrega_chaves: "entrega_chaves",
+  emergencial: "emergencial",
+} as const;
+
+export type SavedInspectionEscopo =
+  (typeof SavedInspectionEscopo)[keyof typeof SavedInspectionEscopo];
+
+export const SavedInspectionEscopo = {
+  completa: "completa",
+  areas_especificas: "areas_especificas",
+} as const;
+
 export interface SavedInspection {
   id: number;
   tipo: string;
@@ -120,6 +166,9 @@ export interface SavedInspection {
   areaId?: number;
   assetId?: number;
   tipoEvento: SavedInspectionTipoEvento;
+  tipoVistoria?: SavedInspectionTipoVistoria;
+  escopo: SavedInspectionEscopo;
+  areasIds?: string | null;
   createdByClerkId: string;
   createdAt: string;
 }

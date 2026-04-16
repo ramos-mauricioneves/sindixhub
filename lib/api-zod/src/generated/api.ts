@@ -68,6 +68,19 @@ export const ListInspectionsResponse = zod.object({
       areaId: zod.number().optional(),
       assetId: zod.number().optional(),
       tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
+      tipoVistoria: zod
+        .enum([
+          "tecnica",
+          "predial",
+          "checklist",
+          "acompanhamento_diario",
+          "acompanhamento_semanal",
+          "entrega_chaves",
+          "emergencial",
+        ])
+        .nullish(),
+      escopo: zod.enum(["completa", "areas_especificas"]),
+      areasIds: zod.string().nullish(),
       createdByClerkId: zod.string(),
       createdAt: zod.coerce.date(),
     }),
@@ -96,6 +109,19 @@ export const SaveInspectionBody = zod.object({
   tipoEvento: zod
     .enum(["vistoria", "manutencao", "incidente", "melhoria"])
     .optional(),
+  tipoVistoria: zod
+    .enum([
+      "tecnica",
+      "predial",
+      "checklist",
+      "acompanhamento_diario",
+      "acompanhamento_semanal",
+      "entrega_chaves",
+      "emergencial",
+    ])
+    .optional(),
+  escopo: zod.enum(["completa", "areas_especificas"]).optional(),
+  areasIds: zod.string().optional(),
 });
 
 /**
@@ -121,6 +147,19 @@ export const GetInspectionResponse = zod.object({
   areaId: zod.number().optional(),
   assetId: zod.number().optional(),
   tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
+  tipoVistoria: zod
+    .enum([
+      "tecnica",
+      "predial",
+      "checklist",
+      "acompanhamento_diario",
+      "acompanhamento_semanal",
+      "entrega_chaves",
+      "emergencial",
+    ])
+    .nullish(),
+  escopo: zod.enum(["completa", "areas_especificas"]),
+  areasIds: zod.string().nullish(),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -152,6 +191,19 @@ export const UpdateInspectionStatusResponse = zod.object({
   areaId: zod.number().optional(),
   assetId: zod.number().optional(),
   tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
+  tipoVistoria: zod
+    .enum([
+      "tecnica",
+      "predial",
+      "checklist",
+      "acompanhamento_diario",
+      "acompanhamento_semanal",
+      "entrega_chaves",
+      "emergencial",
+    ])
+    .nullish(),
+  escopo: zod.enum(["completa", "areas_especificas"]),
+  areasIds: zod.string().nullish(),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -660,6 +712,19 @@ export const GetDashboardSummaryResponse = zod.object({
       areaId: zod.number().optional(),
       assetId: zod.number().optional(),
       tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
+      tipoVistoria: zod
+        .enum([
+          "tecnica",
+          "predial",
+          "checklist",
+          "acompanhamento_diario",
+          "acompanhamento_semanal",
+          "entrega_chaves",
+          "emergencial",
+        ])
+        .nullish(),
+      escopo: zod.enum(["completa", "areas_especificas"]),
+      areasIds: zod.string().nullish(),
       createdByClerkId: zod.string(),
       createdAt: zod.coerce.date(),
     }),
