@@ -746,79 +746,29 @@ export const GetDashboardSummaryResponse = zod.object({
 });
 
 /**
- * @summary List residents for a condominium
+ * @summary Get assembly insights based on inspections and improvements
  */
-export const ListMoradoresParams = zod.object({
-  condominioId: zod.coerce.number(),
+export const getAssembleiasInsightsQueryMonthsDefault = 6;
+
+export const GetAssembleiasInsightsQueryParams = zod.object({
+  condominioId: zod.coerce.number().optional(),
+  months: zod.coerce.number().default(getAssembleiasInsightsQueryMonthsDefault),
 });
 
-export const ListMoradoresQueryParams = zod.object({
-  tipo: zod.coerce.string().optional(),
-  ativo: zod.coerce.boolean().optional(),
-});
-
-export const ListMoradoresResponseItem = zod.object({
-  id: zod.number(),
-  condominioId: zod.number(),
-  unidade: zod.string(),
-  nome: zod.string(),
-  tipo: zod.string(),
-  telefone: zod.string().nullish(),
-  email: zod.string().nullish(),
-  ativo: zod.boolean(),
-  createdAt: zod.coerce.date(),
-});
-export const ListMoradoresResponse = zod.array(ListMoradoresResponseItem);
-
-/**
- * @summary Create a resident
- */
-export const CreateMoradorParams = zod.object({
-  condominioId: zod.coerce.number(),
-});
-
-export const CreateMoradorBody = zod.object({
-  unidade: zod.string(),
-  nome: zod.string(),
-  tipo: zod.string(),
-  telefone: zod.string().optional(),
-  email: zod.string().optional(),
-  ativo: zod.boolean().optional(),
-});
-
-/**
- * @summary Update a resident
- */
-export const UpdateMoradorParams = zod.object({
-  condominioId: zod.coerce.number(),
-  moradorId: zod.coerce.number(),
-});
-
-export const UpdateMoradorBody = zod.object({
-  unidade: zod.string(),
-  nome: zod.string(),
-  tipo: zod.string(),
-  telefone: zod.string().optional(),
-  email: zod.string().optional(),
-  ativo: zod.boolean().optional(),
-});
-
-export const UpdateMoradorResponse = zod.object({
-  id: zod.number(),
-  condominioId: zod.number(),
-  unidade: zod.string(),
-  nome: zod.string(),
-  tipo: zod.string(),
-  telefone: zod.string().nullish(),
-  email: zod.string().nullish(),
-  ativo: zod.boolean(),
-  createdAt: zod.coerce.date(),
-});
-
-/**
- * @summary Delete a resident
- */
-export const DeleteMoradorParams = zod.object({
-  condominioId: zod.coerce.number(),
-  moradorId: zod.coerce.number(),
+export const GetAssembleiasInsightsResponse = zod.object({
+  topics: zod.array(
+    zod.object({
+      titulo: zod.string(),
+      categoria: zod.string(),
+      prioridade: zod.string(),
+      descricao: zod.string(),
+      evidencias: zod.number(),
+      condominios: zod.array(zod.string()),
+      tiposEvento: zod.array(zod.string()),
+      urgenciaMedia: zod.string(),
+    }),
+  ),
+  totalInspections: zod.number(),
+  periodMonths: zod.number(),
+  generatedAt: zod.coerce.date(),
 });

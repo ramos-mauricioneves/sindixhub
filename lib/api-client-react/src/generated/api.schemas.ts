@@ -419,25 +419,22 @@ export interface DashboardSummary {
   criticalAssets: Asset[];
 }
 
-export interface Morador {
-  id: number;
-  condominioId: number;
-  unidade: string;
-  nome: string;
-  tipo: string;
-  telefone?: string | null;
-  email?: string | null;
-  ativo: boolean;
-  createdAt: string;
+export interface AssembleiaTopic {
+  titulo: string;
+  categoria: string;
+  prioridade: string;
+  descricao: string;
+  evidencias: number;
+  condominios: string[];
+  tiposEvento: string[];
+  urgenciaMedia: string;
 }
 
-export interface MoradorBody {
-  unidade: string;
-  nome: string;
-  tipo: string;
-  telefone?: string;
-  email?: string;
-  ativo?: boolean;
+export interface AssembleiasInsights {
+  topics: AssembleiaTopic[];
+  totalInspections: number;
+  periodMonths: number;
+  generatedAt: string;
 }
 
 export interface ErrorResponse {
@@ -529,7 +526,7 @@ export type DeleteAsset200 = {
   ok: boolean;
 };
 
-export type ListMoradoresParams = {
-  tipo?: string;
-  ativo?: boolean;
+export type GetAssembleiasInsightsParams = {
+  condominioId?: number;
+  months?: number;
 };

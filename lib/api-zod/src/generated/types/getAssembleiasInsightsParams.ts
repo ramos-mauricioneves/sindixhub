@@ -6,11 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export interface MoradorBody {
-  unidade: string;
-  nome: string;
-  tipo: string;
-  telefone?: string;
-  email?: string;
-  ativo?: boolean;
-}
+export type GetAssembleiasInsightsParams = {
+  condominioId?: number;
+  months?: number;
+};

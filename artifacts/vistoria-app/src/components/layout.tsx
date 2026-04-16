@@ -2,7 +2,7 @@ import React, { createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
-import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, UserRound, ClipboardCheck } from "lucide-react";
+import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, ClipboardCheck, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/App";
 
@@ -63,18 +63,18 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [];
   if (role === "admin") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
-    navItems.push({ label: t("nav.moradores"), path: "/app/moradores", icon: UserRound });
-    navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
     navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
+    navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
+    navItems.push({ label: t("nav.assembleias"), path: "/app/assembleias", icon: Lightbulb });
     navItems.push({ label: t("nav.condominios"), path: "/app/condominios", icon: Building2 });
     navItems.push({ label: t("nav.usuarios"), path: "/app/admin", icon: Users });
   } else if (role === "sindico") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
-    navItems.push({ label: t("nav.moradores"), path: "/app/moradores", icon: UserRound });
-    navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
     navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
+    navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
+    navItems.push({ label: t("nav.assembleias"), path: "/app/assembleias", icon: Lightbulb });
   } else {
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
     navItems.push({ label: t("nav.historico"), path: "/app/historico", icon: History });
