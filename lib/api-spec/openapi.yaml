@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for Assistente de Vistoria Condominial
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: report
+    description: Condominium inspection report operations
 paths:
   /healthz:
     get:
@@ -24,6 +26,53 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /generate-report:
+    post:
+      operationId: generateReport
+      tags: [report]
+      summary: Generate inspection report
+      description: Transcribes audio, analyzes images, and generates a professional condominium notice
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: Audio file of the inspection
+                images:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: Images from the inspection
+                notes:
+                  type: string
+                  description: Optional additional observations
+              required:
+                - audio
+      responses:
+        "200":
+          description: Report generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InspectionReport"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: AI processing error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   schemas:
     HealthStatus:
@@ -33,4 +82,43 @@ components:
           type: string
       required:
         - status
-
+    InspectionReport:
+      type: object
+      properties:
+        tipo:
+          type: string
+          description: Type of the problem identified
+        urgencia:
+          type: string
+          enum: [baixa, média, alta]
+          description: Urgency level
+        acao:
+          type: string
+          description: Recommended action
+        resumo:
+          type: string
+          description: Short summary (up to 2 lines)
+        comunicado:
+          type: string
+          description: Formal notice for residents
+        transcricao:
+          type: string
+          description: Audio transcription
+        analise_imagens:
+          type: string
+          description: Image analysis result
+      required:
+        - tipo
+        - urgencia
+        - acao
+        - resumo
+        - comunicado
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+      required:
+        - error

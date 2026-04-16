@@ -1,0 +1,227 @@
+# 🚀 Projeto: Assistente de Vistoria Condominial com IA
+
+## 🎯 Objetivo
+
+Construir uma aplicação web onde um síndico possa:
+
+1. Enviar:
+
+   * Áudio (vistoria)
+   * Imagens
+   * Informações adicionais (opcional)
+
+2. O sistema deve:
+
+   * Transcrever o áudio
+   * Analisar imagens
+   * Gerar automaticamente um comunicado profissional
+
+3. Permitir:
+
+   * Visualizar o comunicado
+   * Editar manualmente (opcional)
+   * Enviar via WhatsApp (integração futura via API)
+
+---
+
+# 🏗️ Arquitetura
+
+## Backend
+
+* Python + FastAPI
+
+## Frontend
+
+* React (simples, pode usar Vite)
+* UI limpa e funcional (não precisa design complexo)
+
+## Integrações
+
+* OpenAI API (transcrição + análise imagem)
+* Claude API (geração do comunicado)
+
+---
+
+# ⚙️ Funcionalidades obrigatórias
+
+## 1. Tela principal
+
+Criar uma página com:
+
+* Upload de áudio
+* Upload de múltiplas imagens
+* Campo de texto opcional:
+
+  * "Observações adicionais"
+* Botão:
+
+  * "Gerar comunicado"
+
+---
+
+## 2. Backend endpoint
+
+Criar endpoint:
+
+POST /generate-report
+
+Recebe:
+
+* audio file
+* images[]
+* notes (string)
+
+---
+
+## 3. Processamento IA (pipeline)
+
+### Etapa 1 — OpenAI
+
+* Transcrever áudio (Whisper)
+* Analisar imagens (Vision)
+
+Retornar:
+
+{
+"transcription": "...",
+"image_analysis": "...",
+"structured_data": {
+"possible_issue": "...",
+"location": "...",
+"details": "..."
+}
+}
+
+---
+
+### Etapa 2 — Claude
+
+Enviar para Claude:
+
+INPUT:
+
+* transcription
+* image_analysis
+* notes
+
+INSTRUCTION:
+
+"Você é um síndico profissional.
+
+Analise as informações e gere:
+
+1. Tipo do problema
+2. Nível de urgência (baixa, média, alta)
+3. Ação recomendada
+4. Um resumo curto (até 2 linhas)
+5. Um comunicado formal para moradores
+
+Use linguagem clara, profissional e sem termos técnicos desnecessários."
+
+---
+
+Retornar JSON:
+
+{
+"tipo": "...",
+"urgencia": "...",
+"acao": "...",
+"resumo": "...",
+"comunicado": "..."
+}
+
+---
+
+## 4. Frontend resultado
+
+Após gerar:
+
+Exibir:
+
+* Tipo
+* Urgência
+* Ação
+* Resumo
+* Comunicado (editável)
+
+---
+
+## 5. Botão adicional
+
+Botão:
+
+"Enviar via WhatsApp"
+
+(Apenas mockar por enquanto com console.log ou placeholder)
+
+---
+
+# 🧩 Estrutura do projeto
+
+/backend
+main.py
+services/
+openai_service.py
+claude_service.py
+
+/frontend
+src/
+App.jsx
+components/
+UploadForm.jsx
+ResultView.jsx
+
+---
+
+# 🔐 Configurações
+
+Usar variáveis de ambiente:
+
+* OPENAI_API_KEY
+* CLAUDE_API_KEY
+
+---
+
+# 🧠 Boas práticas obrigatórias
+
+* Código limpo e modular
+* Separar lógica de IA em services
+* Tratamento de erro (arquivo inválido, falha API)
+* Limitar tamanho de upload
+* Logs simples no backend
+
+---
+
+# 🚀 Extras (se possível)
+
+* Loading state enquanto processa
+* Preview das imagens enviadas
+* Validação antes de enviar (ex: exigir áudio)
+
+---
+
+# 🎯 Resultado esperado
+
+Um app funcional onde:
+
+1. Usuário sobe áudio + imagens
+2. Clica em "Gerar comunicado"
+3. Recebe resposta estruturada
+4. Pode editar e enviar
+
+---
+
+# ⚠️ Importante
+
+* NÃO implementar autenticação agora
+* NÃO implementar banco de dados
+* Manter simples e funcional
+* Foco em funcionamento ponta a ponta
+
+---
+
+# 🔥 Prioridade
+
+Funcionar > bonito
+
+---
