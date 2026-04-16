@@ -5,21 +5,7 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
-
-/**
- * Urgency level
- */
-export type InspectionReportUrgencia =
-  (typeof InspectionReportUrgencia)[keyof typeof InspectionReportUrgencia];
-
-export const InspectionReportUrgencia = {
-  baixa: "baixa",
-  média: "média",
-  alta: "alta",
-} as const;
+import type { InspectionReportUrgencia } from "./inspectionReportUrgencia";
 
 export interface InspectionReport {
   /** Type of the problem identified */
@@ -37,17 +23,3 @@ export interface InspectionReport {
   /** Image analysis result */
   analise_imagens?: string;
 }
-
-export interface ErrorResponse {
-  error: string;
-  details?: string;
-}
-
-export type GenerateReportBody = {
-  /** Audio file of the inspection */
-  audio: Blob;
-  /** Images from the inspection */
-  images?: Blob[];
-  /** Optional additional observations */
-  notes?: string;
-};
