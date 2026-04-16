@@ -1,12 +1,14 @@
+import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { useGetDashboardSummary } from "@workspace/api-client-react";
+import { useGetDashboardSummary, useListCondominios } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import {
   LayoutDashboard, AlertTriangle, CheckCircle2, Wrench, PackageX,
   TrendingUp, Activity, ChevronRight, RefreshCw, Package,
-  Loader2, Shield, Zap, Building2
+  Loader2, Shield, Zap, Building2, MessageSquareWarning, CalendarDays,
+  Wallet, Bell, ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,11 +33,113 @@ const STATUS_ASSET_COLORS: Record<string, string> = {
   inativo: "bg-gray-100 text-gray-700",
 };
 
+interface SmartInsight {
+  type: "warning" | "info" | "success";
+  icon: any;
+  title: string;
+  description: string;
+  link?: string;
+  linkLabel?: string;
+}
+
 export default function DashboardPage() {
   const { t, i18n } = useTranslation();
   const locale = i18n.language === "pt" ? ptBR : enUS;
+  const isPt = i18n.language === "pt";
 
   const { data, isPending, isError, refetch, isRefetching } = useGetDashboardSummary();
+  const { data: condominios } = useListCondominios();
+  const [insights, setInsights] = useState<SmartInsight[]>([]);
+
+  useEffect(() => {
+    if (!condominios?.length) return;
+
+    const fetchInsights = async () => {
+      const newInsights: SmartInsight[] = [];
+
+      for (const c of condominios.slice(0, 3)) {
+        try {
+          const [ocRes, resRes, finRes] = await Promise.all([
+            fetch(`/api/condominios/${c.id}/ocorrencias?status=aberta`),
+            fetch(`/api/condominios/${c.id}/reservas?status=pendente`),
+            fetch(`/api/condominios/${c.id}/lancamentos?status=pendente`),
+          ]);
+
+          if (ocRes.ok) {
+            const ocs = await ocRes.json();
+            const highPriority = ocs.filter((o: any) => o.prioridade === "alta");
+            if (highPriority.length > 0) {
+              newInsights.push({
+                type: "warning",
+                icon: MessageSquareWarning,
+                title: isPt ? `${highPriority.length} ocorrência(s) alta prioridade` : `${highPriority.length} high priority issue(s)`,
+                description: isPt ? `${c.nome}: ${highPriority[0].titulo}` : `${c.nome}: ${highPriority[0].titulo}`,
+                link: "/app/ocorrencias",
+                linkLabel: isPt ? "Ver ocorrências" : "View issues",
+              });
+            } else if (ocs.length > 0) {
+              newInsights.push({
+                type: "info",
+                icon: MessageSquareWarning,
+                title: isPt ? `${ocs.length} ocorrência(s) aberta(s)` : `${ocs.length} open issue(s)`,
+                description: c.nome,
+                link: "/app/ocorrencias",
+                linkLabel: isPt ? "Ver" : "View",
+              });
+            }
+          }
+
+          if (resRes.ok) {
+            const reservas = await resRes.json();
+            if (reservas.length > 0) {
+              newInsights.push({
+                type: "info",
+                icon: CalendarDays,
+                title: isPt ? `${reservas.length} reserva(s) aguardando aprovação` : `${reservas.length} reservation(s) pending`,
+                description: c.nome,
+                link: "/app/reservas",
+                linkLabel: isPt ? "Aprovar" : "Approve",
+              });
+            }
+          }
+
+          if (finRes.ok) {
+            const lancamentos = await finRes.json();
+            const today = new Date().toISOString().split("T")[0];
+            const overdue = lancamentos.filter((l: any) => l.dataVencimento < today && l.status === "pendente");
+            if (overdue.length > 0) {
+              const totalOverdue = overdue.reduce((sum: number, l: any) => sum + parseFloat(l.valor || "0"), 0);
+              newInsights.push({
+                type: "warning",
+                icon: Wallet,
+                title: isPt
+                  ? `${overdue.length} pagamento(s) em atraso`
+                  : `${overdue.length} overdue payment(s)`,
+                description: isPt
+                  ? `${c.nome} · R$ ${totalOverdue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                  : `${c.nome} · R$ ${totalOverdue.toFixed(2)}`,
+                link: "/app/financeiro",
+                linkLabel: isPt ? "Ver financeiro" : "View finances",
+              });
+            }
+          }
+        } catch {}
+      }
+
+      if (newInsights.length === 0 && data) {
+        newInsights.push({
+          type: "success",
+          icon: CheckCircle2,
+          title: isPt ? "Tudo em dia!" : "All caught up!",
+          description: isPt ? "Nenhum alerta pendente no momento" : "No pending alerts at the moment",
+        });
+      }
+
+      setInsights(newInsights);
+    };
+
+    fetchInsights();
+  }, [condominios, isPt, data]);
 
   if (isPending) {
     return (
@@ -252,12 +356,63 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
+      {/* Smart Insights */}
+      {insights.length > 0 && (
+        <Card className="border-primary/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" />
+              {isPt ? "Alertas Inteligentes" : "Smart Alerts"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {insights.map((insight, i) => {
+              const Icon = insight.icon;
+              const bgColor = insight.type === "warning" ? "bg-orange-50 border-orange-200"
+                : insight.type === "success" ? "bg-green-50 border-green-200"
+                : "bg-blue-50 border-blue-200";
+              const iconColor = insight.type === "warning" ? "text-orange-600"
+                : insight.type === "success" ? "text-green-600"
+                : "text-blue-600";
+              return (
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-lg border ${bgColor}`}>
+                  <Icon className={`h-5 w-5 shrink-0 ${iconColor}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">{insight.title}</p>
+                    <p className="text-xs text-muted-foreground">{insight.description}</p>
+                  </div>
+                  {insight.link && (
+                    <Link href={insight.link}>
+                      <Button variant="ghost" size="sm" className="shrink-0 text-xs">
+                        {insight.linkLabel} <ArrowRight className="h-3 w-3 ml-1" />
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick actions */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Link href="/app/nova-vistoria">
           <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="default">
             <Activity className="h-5 w-5" />
             <span className="text-sm">{t("dashboard.newEvent")}</span>
+          </Button>
+        </Link>
+        <Link href="/app/ocorrencias">
+          <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="outline">
+            <MessageSquareWarning className="h-5 w-5" />
+            <span className="text-sm">{isPt ? "Ocorrências" : "Issues"}</span>
+          </Button>
+        </Link>
+        <Link href="/app/reservas">
+          <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="outline">
+            <CalendarDays className="h-5 w-5" />
+            <span className="text-sm">{isPt ? "Reservas" : "Reservations"}</span>
           </Button>
         </Link>
         <Link href="/app/ativos">

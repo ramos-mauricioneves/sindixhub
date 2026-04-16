@@ -58,6 +58,8 @@ React + Vite mobile-first frontend for full condominium management. Evolved from
 - `/app/vistoria/:id` — Event detail: tipoEvento badge, copy/WhatsApp buttons + status badge; síndico/admin can advance status
 - `/app/moradores` — Residents CRUD: unidade, nome, tipo (proprietario/inquilino/morador/dependente), telefone, email, ativo; filter by tipo and ativo status; search by name or unit
 - `/app/financeiro` — Financial entries CRUD: receita/despesa by categoria, valor, dataVencimento, dataPagamento, status (pendente/pago/cancelado); summary cards (receitas, despesas, saldo); quick "mark as paid" action
+- `/app/reservas` — Common area reservations: weekly calendar view, conflict detection, approval workflow (pendente→aprovada/rejeitada), rejection with reason; linked to condomínio areas
+- `/app/ocorrencias` — Resident issue tracker: tickets with category (manutenção, barulho, segurança, limpeza, estacionamento, infiltração, elevador, outros), priority (baixa/média/alta), status workflow (aberta→em_andamento→resolvida→fechada), management response; summary badges for open/in-progress count
 - `/app/admin` — Admin user management panel
 - `/app/condominios` — Admin-only condominium CRUD + area management (inline expandable)
 
@@ -109,6 +111,8 @@ Express 5 backend with Clerk authentication middleware.
 - `userCondominiosTable` — clerkId (FK), condominioId (FK) — many-to-many for síndico access scoping
 - `moradoresTable` — condominioId (FK), unidade, nome, tipo (proprietario|inquilino|morador|dependente), telefone, email, ativo, createdAt
 - `lancamentosTable` — condominioId (FK), tipo (receita|despesa), categoria, descricao, valor (numeric string), dataVencimento, dataPagamento, status (pendente|pago|cancelado), observacao, createdAt
+- `reservasTable` — condominioId (FK), areaId (FK), moradorNome, unidade, data, horaInicio, horaFim, status (pendente|aprovada|rejeitada|cancelada), observacao, motivoRejeicao, createdAt
+- `ocorrenciasTable` — condominioId (FK), moradorNome, unidade, categoria, titulo, descricao, prioridade (baixa|media|alta), status (aberta|em_andamento|resolvida|fechada), resposta, resolvidoEm, createdAt
 
 **Inspection Status Workflow:**
 `gerado` (default, created by AI) → `pronto_para_envio` (ready to send, set by síndico/admin) → `enviado` (sent, set by síndico/admin)

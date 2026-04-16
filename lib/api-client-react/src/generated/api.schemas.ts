@@ -347,6 +347,55 @@ export interface LancamentoBody {
   observacao?: string;
 }
 
+export interface Reserva {
+  id: number;
+  condominioId: number;
+  areaId: number;
+  moradorNome: string;
+  unidade: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  status: string;
+  observacao?: string | null;
+  motivoRejeicao?: string | null;
+  createdAt: string;
+}
+
+export interface ReservaBody {
+  areaId: number;
+  moradorNome: string;
+  unidade: string;
+  data: string;
+  horaInicio: string;
+  horaFim: string;
+  observacao?: string;
+}
+
+export interface Ocorrencia {
+  id: number;
+  condominioId: number;
+  moradorNome: string;
+  unidade: string;
+  categoria: string;
+  titulo: string;
+  descricao: string;
+  prioridade: string;
+  status: string;
+  resposta?: string | null;
+  resolvidoEm?: string | null;
+  createdAt: string;
+}
+
+export interface OcorrenciaBody {
+  moradorNome: string;
+  unidade: string;
+  categoria: string;
+  titulo: string;
+  descricao: string;
+  prioridade?: string;
+}
+
 export interface ErrorResponse {
   error: string;
   details?: string;

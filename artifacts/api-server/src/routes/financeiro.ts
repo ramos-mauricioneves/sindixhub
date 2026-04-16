@@ -76,8 +76,9 @@ router.patch("/condominios/:condominioId/lancamentos/:lancamentoId", requireAuth
   const name = (auth as any).sessionClaims?.name as string | undefined;
   await upsertUser(auth.userId, emailAddress ?? "", name);
 
+  const condominioId = parseInt(req.params.condominioId, 10);
   const lancamentoId = parseInt(req.params.lancamentoId, 10);
-  if (isNaN(lancamentoId)) { res.status(400).json({ error: "lancamentoId inválido" }); return; }
+  if (isNaN(condominioId) || isNaN(lancamentoId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
 
   const { tipo, categoria, descricao, valor, dataVencimento, dataPagamento, status, observacao } = req.body;
   const updateData: Partial<typeof lancamentosTable.$inferInsert> = {};
@@ -90,15 +91,20 @@ router.patch("/condominios/:condominioId/lancamentos/:lancamentoId", requireAuth
   if (status !== undefined) updateData.status = status;
   if (observacao !== undefined) updateData.observacao = observacao;
 
-  const [updated] = await db.update(lancamentosTable).set(updateData).where(eq(lancamentosTable.id, lancamentoId)).returning();
-  if (!updated) { res.status(404).json({ error: "Lançamento não encontrado" }); return; }
+  const [updated] = await db.update(lancamentosTable).set(updateData).where(
+    and(eq(lancamentosTable.id, lancamentoId), eq(lancamentosTable.condominioId, condominioId))
+  ).returning();
+  if (!updated) { res.status(404).json({ error: "Lançamento não encontrado neste condomínio" }); return; }
   res.json(fmt(updated));
 });
 
 router.delete("/condominios/:condominioId/lancamentos/:lancamentoId", requireAuth, requireRole("admin", "sindico"), async (req, res) => {
+  const condominioId = parseInt(req.params.condominioId, 10);
   const lancamentoId = parseInt(req.params.lancamentoId, 10);
-  if (isNaN(lancamentoId)) { res.status(400).json({ error: "lancamentoId inválido" }); return; }
-  await db.delete(lancamentosTable).where(eq(lancamentosTable.id, lancamentoId));
+  if (isNaN(condominioId) || isNaN(lancamentoId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
+  await db.delete(lancamentosTable).where(
+    and(eq(lancamentosTable.id, lancamentoId), eq(lancamentosTable.condominioId, condominioId))
+  );
   res.status(204).send();
 });
 

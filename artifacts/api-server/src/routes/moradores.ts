@@ -74,8 +74,9 @@ router.patch("/condominios/:condominioId/moradores/:moradorId", requireAuth, req
   const name = (auth as any).sessionClaims?.name as string | undefined;
   await upsertUser(auth.userId, emailAddress ?? "", name);
 
+  const condominioId = parseInt(req.params.condominioId, 10);
   const moradorId = parseInt(req.params.moradorId, 10);
-  if (isNaN(moradorId)) { res.status(400).json({ error: "moradorId inválido" }); return; }
+  if (isNaN(condominioId) || isNaN(moradorId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
 
   const { unidade, nome, tipo, telefone, email, ativo } = req.body;
   const updateData: Partial<typeof moradoresTable.$inferInsert> = {};
@@ -86,15 +87,20 @@ router.patch("/condominios/:condominioId/moradores/:moradorId", requireAuth, req
   if (email !== undefined) updateData.email = email;
   if (ativo !== undefined) updateData.ativo = ativo;
 
-  const [updated] = await db.update(moradoresTable).set(updateData).where(eq(moradoresTable.id, moradorId)).returning();
-  if (!updated) { res.status(404).json({ error: "Morador não encontrado" }); return; }
+  const [updated] = await db.update(moradoresTable).set(updateData).where(
+    and(eq(moradoresTable.id, moradorId), eq(moradoresTable.condominioId, condominioId))
+  ).returning();
+  if (!updated) { res.status(404).json({ error: "Morador não encontrado neste condomínio" }); return; }
   res.json(fmt(updated));
 });
 
 router.delete("/condominios/:condominioId/moradores/:moradorId", requireAuth, requireRole("admin", "sindico"), async (req, res) => {
+  const condominioId = parseInt(req.params.condominioId, 10);
   const moradorId = parseInt(req.params.moradorId, 10);
-  if (isNaN(moradorId)) { res.status(400).json({ error: "moradorId inválido" }); return; }
-  await db.delete(moradoresTable).where(eq(moradoresTable.id, moradorId));
+  if (isNaN(condominioId) || isNaN(moradorId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
+  await db.delete(moradoresTable).where(
+    and(eq(moradoresTable.id, moradorId), eq(moradoresTable.condominioId, condominioId))
+  );
   res.status(204).send();
 });
 

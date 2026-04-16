@@ -29,6 +29,8 @@ export default {
     ativos: "Ativos",
     moradores: "Moradores",
     financeiro: "Financeiro",
+    reservas: "Reservas",
+    ocorrencias: "Ocorrências",
   },
   home: {
     title: "Assistente de Vistoria Condominial",

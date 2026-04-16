@@ -1489,6 +1489,138 @@ components:
         - valor
         - dataVencimento
 
+    Reserva:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        areaId:
+          type: integer
+        moradorNome:
+          type: string
+        unidade:
+          type: string
+        data:
+          type: string
+        horaInicio:
+          type: string
+        horaFim:
+          type: string
+        status:
+          type: string
+        observacao:
+          type: string
+          nullable: true
+        motivoRejeicao:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - areaId
+        - moradorNome
+        - unidade
+        - data
+        - horaInicio
+        - horaFim
+        - status
+        - createdAt
+
+    ReservaBody:
+      type: object
+      properties:
+        areaId:
+          type: integer
+        moradorNome:
+          type: string
+        unidade:
+          type: string
+        data:
+          type: string
+        horaInicio:
+          type: string
+        horaFim:
+          type: string
+        observacao:
+          type: string
+      required:
+        - areaId
+        - moradorNome
+        - unidade
+        - data
+        - horaInicio
+        - horaFim
+
+    Ocorrencia:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        moradorNome:
+          type: string
+        unidade:
+          type: string
+        categoria:
+          type: string
+        titulo:
+          type: string
+        descricao:
+          type: string
+        prioridade:
+          type: string
+        status:
+          type: string
+        resposta:
+          type: string
+          nullable: true
+        resolvidoEm:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - moradorNome
+        - unidade
+        - categoria
+        - titulo
+        - descricao
+        - prioridade
+        - status
+        - createdAt
+
+    OcorrenciaBody:
+      type: object
+      properties:
+        moradorNome:
+          type: string
+        unidade:
+          type: string
+        categoria:
+          type: string
+        titulo:
+          type: string
+        descricao:
+          type: string
+        prioridade:
+          type: string
+      required:
+        - moradorNome
+        - unidade
+        - categoria
+        - titulo
+        - descricao
+
     ErrorResponse:
       type: object
       properties:

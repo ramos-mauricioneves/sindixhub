@@ -29,6 +29,8 @@ export default {
     ativos: "Assets",
     moradores: "Residents",
     financeiro: "Finances",
+    reservas: "Reservations",
+    ocorrencias: "Issues",
   },
   home: {
     title: "Condominium Inspection Assistant",
