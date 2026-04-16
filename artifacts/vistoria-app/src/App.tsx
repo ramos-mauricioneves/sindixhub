@@ -15,9 +15,6 @@ import CondominiosPage from "@/pages/condominios";
 import DashboardPage from "@/pages/dashboard";
 import AtivosPage from "@/pages/ativos";
 import MoradoresPage from "@/pages/moradores";
-import FinanceiroPage from "@/pages/financeiro";
-import ReservasPage from "@/pages/reservas";
-import OcorrenciasPage from "@/pages/ocorrencias";
 import Layout from "@/components/layout";
 
 export const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === "true";
@@ -97,9 +94,6 @@ function AppRoutes() {
             <Route path="/app/condominios" component={CondominiosPage} />
             <Route path="/app/ativos" component={AtivosPage} />
             <Route path="/app/moradores" component={MoradoresPage} />
-            <Route path="/app/financeiro" component={FinanceiroPage} />
-            <Route path="/app/reservas" component={ReservasPage} />
-            <Route path="/app/ocorrencias" component={OcorrenciasPage} />
             <Route component={NotFound} />
           </Switch>
         </Layout>

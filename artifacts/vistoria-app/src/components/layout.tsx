@@ -2,7 +2,7 @@ import React, { createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
-import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, UserRound, Wallet, ClipboardCheck, CalendarDays, MessageSquareWarning } from "lucide-react";
+import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, UserRound, ClipboardCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/App";
 
@@ -63,10 +63,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const navItems = [];
   if (role === "admin") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
-    navItems.push({ label: t("nav.ocorrencias"), path: "/app/ocorrencias", icon: MessageSquareWarning });
-    navItems.push({ label: t("nav.reservas"), path: "/app/reservas", icon: CalendarDays });
     navItems.push({ label: t("nav.moradores"), path: "/app/moradores", icon: UserRound });
-    navItems.push({ label: t("nav.financeiro"), path: "/app/financeiro", icon: Wallet });
     navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
     navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
@@ -74,10 +71,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     navItems.push({ label: t("nav.usuarios"), path: "/app/admin", icon: Users });
   } else if (role === "sindico") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
-    navItems.push({ label: t("nav.ocorrencias"), path: "/app/ocorrencias", icon: MessageSquareWarning });
-    navItems.push({ label: t("nav.reservas"), path: "/app/reservas", icon: CalendarDays });
     navItems.push({ label: t("nav.moradores"), path: "/app/moradores", icon: UserRound });
-    navItems.push({ label: t("nav.financeiro"), path: "/app/financeiro", icon: Wallet });
     navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
     navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });

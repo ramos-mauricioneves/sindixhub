@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { useTranslation } from "react-i18next";
-import { useGetDashboardSummary, useListCondominios } from "@workspace/api-client-react";
+import { useGetDashboardSummary } from "@workspace/api-client-react";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
 import {
   LayoutDashboard, AlertTriangle, CheckCircle2, Wrench, PackageX,
   TrendingUp, Activity, ChevronRight, RefreshCw, Package,
-  Loader2, Shield, Zap, Building2, MessageSquareWarning, CalendarDays,
-  Wallet, Bell, ArrowRight
+  Loader2, Shield, Zap, Building2, Bell, ArrowRight, ClipboardCheck
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,98 +47,46 @@ export default function DashboardPage() {
   const isPt = i18n.language === "pt";
 
   const { data, isPending, isError, refetch, isRefetching } = useGetDashboardSummary();
-  const { data: condominios } = useListCondominios();
   const [insights, setInsights] = useState<SmartInsight[]>([]);
 
   useEffect(() => {
-    if (!condominios?.length) return;
+    if (!data) return;
 
-    const fetchInsights = async () => {
-      const newInsights: SmartInsight[] = [];
+    const newInsights: SmartInsight[] = [];
 
-      for (const c of condominios.slice(0, 3)) {
-        try {
-          const [ocRes, resRes, finRes] = await Promise.all([
-            fetch(`/api/condominios/${c.id}/ocorrencias?status=aberta`),
-            fetch(`/api/condominios/${c.id}/reservas?status=pendente`),
-            fetch(`/api/condominios/${c.id}/lancamentos?status=pendente`),
-          ]);
+    if (data.assetsCriticos > 0) {
+      newInsights.push({
+        type: "warning",
+        icon: AlertTriangle,
+        title: isPt ? `${data.assetsCriticos} ativo(s) em estado crítico` : `${data.assetsCriticos} critical asset(s)`,
+        description: isPt ? "Requerem atenção imediata" : "Require immediate attention",
+        link: "/app/ativos",
+        linkLabel: isPt ? "Ver ativos" : "View assets",
+      });
+    }
 
-          if (ocRes.ok) {
-            const ocs = await ocRes.json();
-            const highPriority = ocs.filter((o: any) => o.prioridade === "alta");
-            if (highPriority.length > 0) {
-              newInsights.push({
-                type: "warning",
-                icon: MessageSquareWarning,
-                title: isPt ? `${highPriority.length} ocorrência(s) alta prioridade` : `${highPriority.length} high priority issue(s)`,
-                description: isPt ? `${c.nome}: ${highPriority[0].titulo}` : `${c.nome}: ${highPriority[0].titulo}`,
-                link: "/app/ocorrencias",
-                linkLabel: isPt ? "Ver ocorrências" : "View issues",
-              });
-            } else if (ocs.length > 0) {
-              newInsights.push({
-                type: "info",
-                icon: MessageSquareWarning,
-                title: isPt ? `${ocs.length} ocorrência(s) aberta(s)` : `${ocs.length} open issue(s)`,
-                description: c.nome,
-                link: "/app/ocorrencias",
-                linkLabel: isPt ? "Ver" : "View",
-              });
-            }
-          }
+    if (data.eventosAlta > 0) {
+      newInsights.push({
+        type: "warning",
+        icon: Zap,
+        title: isPt ? `${data.eventosAlta} evento(s) de alta urgência` : `${data.eventosAlta} high urgency event(s)`,
+        description: isPt ? "Nos últimos 30 dias" : "In the last 30 days",
+        link: "/app/historico",
+        linkLabel: isPt ? "Ver vistorias" : "View inspections",
+      });
+    }
 
-          if (resRes.ok) {
-            const reservas = await resRes.json();
-            if (reservas.length > 0) {
-              newInsights.push({
-                type: "info",
-                icon: CalendarDays,
-                title: isPt ? `${reservas.length} reserva(s) aguardando aprovação` : `${reservas.length} reservation(s) pending`,
-                description: c.nome,
-                link: "/app/reservas",
-                linkLabel: isPt ? "Aprovar" : "Approve",
-              });
-            }
-          }
+    if (newInsights.length === 0) {
+      newInsights.push({
+        type: "success",
+        icon: CheckCircle2,
+        title: isPt ? "Tudo em dia!" : "All caught up!",
+        description: isPt ? "Nenhum alerta pendente no momento" : "No pending alerts at the moment",
+      });
+    }
 
-          if (finRes.ok) {
-            const lancamentos = await finRes.json();
-            const today = new Date().toISOString().split("T")[0];
-            const overdue = lancamentos.filter((l: any) => l.dataVencimento < today && l.status === "pendente");
-            if (overdue.length > 0) {
-              const totalOverdue = overdue.reduce((sum: number, l: any) => sum + parseFloat(l.valor || "0"), 0);
-              newInsights.push({
-                type: "warning",
-                icon: Wallet,
-                title: isPt
-                  ? `${overdue.length} pagamento(s) em atraso`
-                  : `${overdue.length} overdue payment(s)`,
-                description: isPt
-                  ? `${c.nome} · R$ ${totalOverdue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-                  : `${c.nome} · R$ ${totalOverdue.toFixed(2)}`,
-                link: "/app/financeiro",
-                linkLabel: isPt ? "Ver financeiro" : "View finances",
-              });
-            }
-          }
-        } catch {}
-      }
-
-      if (newInsights.length === 0 && data) {
-        newInsights.push({
-          type: "success",
-          icon: CheckCircle2,
-          title: isPt ? "Tudo em dia!" : "All caught up!",
-          description: isPt ? "Nenhum alerta pendente no momento" : "No pending alerts at the moment",
-        });
-      }
-
-      setInsights(newInsights);
-    };
-
-    fetchInsights();
-  }, [condominios, isPt, data]);
+    setInsights(newInsights);
+  }, [data, isPt]);
 
   if (isPending) {
     return (
@@ -403,22 +350,22 @@ export default function DashboardPage() {
             <span className="text-sm">{t("dashboard.newEvent")}</span>
           </Button>
         </Link>
-        <Link href="/app/ocorrencias">
+        <Link href="/app/historico">
           <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="outline">
-            <MessageSquareWarning className="h-5 w-5" />
-            <span className="text-sm">{isPt ? "Ocorrências" : "Issues"}</span>
-          </Button>
-        </Link>
-        <Link href="/app/reservas">
-          <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="outline">
-            <CalendarDays className="h-5 w-5" />
-            <span className="text-sm">{isPt ? "Reservas" : "Reservations"}</span>
+            <ClipboardCheck className="h-5 w-5" />
+            <span className="text-sm">{isPt ? "Vistorias" : "Inspections"}</span>
           </Button>
         </Link>
         <Link href="/app/ativos">
           <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="outline">
             <Building2 className="h-5 w-5" />
             <span className="text-sm">{t("dashboard.manageAssets")}</span>
+          </Button>
+        </Link>
+        <Link href="/app/condominios">
+          <Button className="w-full h-auto py-4 flex flex-col gap-1" variant="outline">
+            <Building2 className="h-5 w-5" />
+            <span className="text-sm">{isPt ? "Condomínios" : "Condominiums"}</span>
           </Button>
         </Link>
       </div>

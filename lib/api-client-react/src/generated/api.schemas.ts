@@ -440,80 +440,6 @@ export interface MoradorBody {
   ativo?: boolean;
 }
 
-export interface Lancamento {
-  id: number;
-  condominioId: number;
-  tipo: string;
-  categoria: string;
-  descricao: string;
-  valor: string;
-  dataVencimento: string;
-  dataPagamento?: string | null;
-  status: string;
-  observacao?: string | null;
-  createdAt: string;
-}
-
-export interface LancamentoBody {
-  tipo: string;
-  categoria: string;
-  descricao: string;
-  valor: string;
-  dataVencimento: string;
-  dataPagamento?: string;
-  status?: string;
-  observacao?: string;
-}
-
-export interface Reserva {
-  id: number;
-  condominioId: number;
-  areaId: number;
-  moradorNome: string;
-  unidade: string;
-  data: string;
-  horaInicio: string;
-  horaFim: string;
-  status: string;
-  observacao?: string | null;
-  motivoRejeicao?: string | null;
-  createdAt: string;
-}
-
-export interface ReservaBody {
-  areaId: number;
-  moradorNome: string;
-  unidade: string;
-  data: string;
-  horaInicio: string;
-  horaFim: string;
-  observacao?: string;
-}
-
-export interface Ocorrencia {
-  id: number;
-  condominioId: number;
-  moradorNome: string;
-  unidade: string;
-  categoria: string;
-  titulo: string;
-  descricao: string;
-  prioridade: string;
-  status: string;
-  resposta?: string | null;
-  resolvidoEm?: string | null;
-  createdAt: string;
-}
-
-export interface OcorrenciaBody {
-  moradorNome: string;
-  unidade: string;
-  categoria: string;
-  titulo: string;
-  descricao: string;
-  prioridade?: string;
-}
-
 export interface ErrorResponse {
   error: string;
   details?: string;
@@ -606,10 +532,4 @@ export type DeleteAsset200 = {
 export type ListMoradoresParams = {
   tipo?: string;
   ativo?: boolean;
-};
-
-export type ListLancamentosParams = {
-  tipo?: string;
-  status?: string;
-  mes?: string;
 };

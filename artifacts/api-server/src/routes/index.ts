@@ -7,9 +7,6 @@ import condominiosRouter from "./condominios";
 import assetsRouter from "./assets";
 import dashboardRouter from "./dashboard";
 import moradoresRouter from "./moradores";
-import financeiroRouter from "./financeiro";
-import reservasRouter from "./reservas";
-import ocorrenciasRouter from "./ocorrencias";
 
 const router: IRouter = Router();
 
@@ -21,8 +18,5 @@ router.use(condominiosRouter);
 router.use(assetsRouter);
 router.use(dashboardRouter);
 router.use(moradoresRouter);
-router.use(financeiroRouter);
-router.use(reservasRouter);
-router.use(ocorrenciasRouter);
 
 export default router;
