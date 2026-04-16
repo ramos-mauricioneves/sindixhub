@@ -5,6 +5,7 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.3.0
  */
+import type { SaveInspectionBodyTipoEvento } from "./saveInspectionBodyTipoEvento";
 import type { SaveInspectionBodyUrgencia } from "./saveInspectionBodyUrgencia";
 
 export interface SaveInspectionBody {
@@ -19,4 +20,6 @@ export interface SaveInspectionBody {
   condominio?: string;
   condominioId?: number;
   areaId?: number;
+  assetId?: number;
+  tipoEvento?: SaveInspectionBodyTipoEvento;
 }

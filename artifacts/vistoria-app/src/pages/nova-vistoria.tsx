@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2 } from "lucide-react";
+import { Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2, Stethoscope, Wrench, Zap, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,10 +13,17 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   useGenerateReport, useSaveInspection,
-  useListCondominios, useListAreas,
-  getListInspectionsQueryKey, getListCondominiosQueryKey, getListAreasQueryKey,
+  useListCondominios, useListAreas, useListAssets,
+  getListInspectionsQueryKey, getListCondominiosQueryKey, getListAreasQueryKey, getListAssetsQueryKey,
   InspectionReport
 } from "@workspace/api-client-react";
+
+const TIPO_EVENTO_OPTIONS = [
+  { value: "vistoria", icon: Stethoscope, labelKey: "novaVistoria_tipoEvento.vistoria", color: "text-blue-600 border-blue-300 bg-blue-50" },
+  { value: "manutencao", icon: Wrench, labelKey: "novaVistoria_tipoEvento.manutencao", color: "text-orange-600 border-orange-300 bg-orange-50" },
+  { value: "incidente", icon: Zap, labelKey: "novaVistoria_tipoEvento.incidente", color: "text-red-600 border-red-300 bg-red-50" },
+  { value: "melhoria", icon: TrendingUp, labelKey: "novaVistoria_tipoEvento.melhoria", color: "text-purple-600 border-purple-300 bg-purple-50" },
+];
 
 function formatDuration(seconds: number) {
   const m = Math.floor(seconds / 60).toString().padStart(2, "0");
@@ -42,6 +49,8 @@ export default function NovaVistoriaPage() {
   const [notes, setNotes] = useState("");
   const [condominioId, setCondominioId] = useState<string>("");
   const [areaId, setAreaId] = useState<string>("");
+  const [assetId, setAssetId] = useState<string>("");
+  const [tipoEvento, setTipoEvento] = useState<string>("vistoria");
 
   const { data: condominios } = useListCondominios({
     query: { queryKey: getListCondominiosQueryKey() }
@@ -50,6 +59,9 @@ export default function NovaVistoriaPage() {
   const selectedCondominioIdNum = condominioId ? parseInt(condominioId, 10) : undefined;
   const { data: areas } = useListAreas(selectedCondominioIdNum!, {
     query: { enabled: !!selectedCondominioIdNum, queryKey: getListAreasQueryKey(selectedCondominioIdNum!) }
+  });
+  const { data: assets } = useListAssets(selectedCondominioIdNum ?? 0, {}, {
+    query: { enabled: !!selectedCondominioIdNum, queryKey: getListAssetsQueryKey(selectedCondominioIdNum ?? 0, {}) }
   });
 
   const generateReport = useGenerateReport();
@@ -77,7 +89,7 @@ export default function NovaVistoriaPage() {
   }, [generateReport.isPending, t]);
 
   useEffect(() => {
-    if (condominioId) setAreaId("");
+    if (condominioId) { setAreaId(""); setAssetId(""); }
   }, [condominioId]);
 
   const startRecording = async () => {
@@ -148,6 +160,8 @@ export default function NovaVistoriaPage() {
         condominio: condominioName,
         condominioId: condominioId ? parseInt(condominioId, 10) : undefined,
         areaId: areaId ? parseInt(areaId, 10) : undefined,
+        assetId: assetId ? parseInt(assetId, 10) : undefined,
+        tipoEvento: tipoEvento as any,
       }
     }, {
       onSuccess: () => {
@@ -174,6 +188,30 @@ export default function NovaVistoriaPage() {
 
       <Card>
         <CardContent className="pt-6 space-y-6">
+          {/* Event Type Selector */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">{t("novaVistoria_tipoEvento.label")}</Label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {TIPO_EVENTO_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const isSelected = tipoEvento === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setTipoEvento(opt.value)}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border-2 text-sm font-medium transition-all ${
+                      isSelected ? `${opt.color} border-current` : "border-border text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{t(opt.labelKey as any)}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Audio Section */}
           <div className="flex flex-col items-center justify-center py-6 space-y-4 rounded-lg bg-muted/50 border border-dashed">
             {!audioBlob ? (
@@ -248,6 +286,26 @@ export default function NovaVistoriaPage() {
                   <SelectContent>
                     <SelectItem value="">{t("common.none")}</SelectItem>
                     {areas?.map(a => (
+                      <SelectItem key={a.id} value={String(a.id)}>
+                        {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Asset selector */}
+            {condominioId && assets && assets.length > 0 && (
+              <div className="space-y-2">
+                <Label>{t("novaVistoria_tipoEvento.assetLabel")}</Label>
+                <Select value={assetId} onValueChange={setAssetId}>
+                  <SelectTrigger data-testid="select-asset">
+                    <SelectValue placeholder={t("novaVistoria_tipoEvento.assetPlaceholder")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t("common.none")}</SelectItem>
+                    {assets.map(a => (
                       <SelectItem key={a.id} value={String(a.id)}>
                         {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
                       </SelectItem>

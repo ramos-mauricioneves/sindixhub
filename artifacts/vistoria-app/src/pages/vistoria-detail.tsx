@@ -114,7 +114,22 @@ export default function VistoriaDetailPage() {
         <CardContent className="pt-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <Badge variant="outline" className="mb-2">{inspection.tipo}</Badge>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                {inspection.tipoEvento && (
+                  <Badge variant="outline" className={`text-xs ${
+                    inspection.tipoEvento === "manutencao" ? "bg-orange-50 text-orange-700 border-orange-200"
+                    : inspection.tipoEvento === "incidente" ? "bg-red-50 text-red-700 border-red-200"
+                    : inspection.tipoEvento === "melhoria" ? "bg-purple-50 text-purple-700 border-purple-200"
+                    : "bg-blue-50 text-blue-700 border-blue-200"
+                  }`}>
+                    {inspection.tipoEvento === "manutencao" ? "Manutenção"
+                      : inspection.tipoEvento === "incidente" ? "Incidente"
+                      : inspection.tipoEvento === "melhoria" ? "Melhoria"
+                      : "Vistoria"}
+                  </Badge>
+                )}
+                <Badge variant="outline" className="bg-background">{inspection.tipo}</Badge>
+              </div>
               <h2 className="text-xl font-bold">{inspection.resumo}</h2>
             </div>
             <div className="flex flex-col items-end gap-2">

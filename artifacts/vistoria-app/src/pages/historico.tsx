@@ -157,6 +157,19 @@ export default function HistoricoPage() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="space-y-2 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {inspection.tipoEvento && inspection.tipoEvento !== "vistoria" && (
+                          <Badge variant="outline" className={`text-xs ${
+                            inspection.tipoEvento === "manutencao" ? "bg-orange-50 text-orange-700 border-orange-200"
+                            : inspection.tipoEvento === "incidente" ? "bg-red-50 text-red-700 border-red-200"
+                            : inspection.tipoEvento === "melhoria" ? "bg-purple-50 text-purple-700 border-purple-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                          }`}>
+                            {inspection.tipoEvento === "manutencao" ? "Manutenção"
+                              : inspection.tipoEvento === "incidente" ? "Incidente"
+                              : inspection.tipoEvento === "melhoria" ? "Melhoria"
+                              : inspection.tipoEvento}
+                          </Badge>
+                        )}
                         <Badge variant="outline" className="bg-background text-xs font-normal">{inspection.tipo}</Badge>
                         <Badge variant="outline" className={`${getUrgenciaColor(inspection.urgencia)} text-xs font-semibold uppercase tracking-wider`}>
                           {getUrgenciaLabel(inspection.urgencia)}

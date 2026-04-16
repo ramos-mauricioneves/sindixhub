@@ -20,6 +20,10 @@ tags:
     description: Condominium management
   - name: areas
     description: Inspection area management
+  - name: assets
+    description: Asset (CMDB) management
+  - name: dashboard
+    description: Dashboard summary
 paths:
   /healthz:
     get:
@@ -513,6 +517,191 @@ paths:
                 required:
                   - ok
 
+  /condominios/{condominioId}/assets:
+    get:
+      operationId: listAssets
+      tags: [assets]
+      summary: List assets for a condominio
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: areaId
+          in: query
+          schema:
+            type: integer
+        - name: tipo
+          in: query
+          schema:
+            type: string
+            enum: [equipamento, estrutura, sistema]
+        - name: criticidade
+          in: query
+          schema:
+            type: string
+            enum: [baixa, media, alta]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [operacional, em_manutencao, inativo]
+      responses:
+        "200":
+          description: List of assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Asset"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createAsset
+      tags: [assets]
+      summary: Create an asset (admin or sindico)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetBody"
+      responses:
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /condominios/{condominioId}/assets/{assetId}:
+    get:
+      operationId: getAsset
+      tags: [assets]
+      summary: Get a single asset
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Asset details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateAsset
+      tags: [assets]
+      summary: Update an asset (admin or sindico)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AssetBody"
+      responses:
+        "200":
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Asset"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAsset
+      tags: [assets]
+      summary: Delete an asset (admin or sindico)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Asset deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard summary for current user
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -574,6 +763,11 @@ components:
           type: integer
         areaId:
           type: integer
+        assetId:
+          type: integer
+        tipoEvento:
+          type: string
+          enum: [vistoria, manutencao, incidente, melhoria]
       required:
         - tipo
         - urgencia
@@ -621,6 +815,11 @@ components:
           type: integer
         areaId:
           type: integer
+        assetId:
+          type: integer
+        tipoEvento:
+          type: string
+          enum: [vistoria, manutencao, incidente, melhoria]
         createdByClerkId:
           type: string
         createdAt:
@@ -634,6 +833,7 @@ components:
         - resumo
         - comunicado
         - status
+        - tipoEvento
         - createdByClerkId
         - createdAt
 
@@ -778,6 +978,110 @@ components:
       required:
         - nome
         - tipo
+
+    Asset:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        areaId:
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+          enum: [equipamento, estrutura, sistema]
+        criticidade:
+          type: string
+          enum: [baixa, media, alta]
+        status:
+          type: string
+          enum: [operacional, em_manutencao, inativo]
+        descricao:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - nome
+        - tipo
+        - criticidade
+        - status
+        - createdAt
+        - updatedAt
+
+    AssetBody:
+      type: object
+      properties:
+        areaId:
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+          enum: [equipamento, estrutura, sistema]
+        criticidade:
+          type: string
+          enum: [baixa, media, alta]
+        status:
+          type: string
+          enum: [operacional, em_manutencao, inativo]
+        descricao:
+          type: string
+      required:
+        - nome
+        - tipo
+        - criticidade
+        - status
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalCondominios:
+          type: integer
+        totalAssets:
+          type: integer
+        assetsOperacional:
+          type: integer
+        assetsEmManutencao:
+          type: integer
+        assetsInativo:
+          type: integer
+        assetsCriticos:
+          type: integer
+        totalEventos30d:
+          type: integer
+        eventosAlta:
+          type: integer
+        eventosMedios:
+          type: integer
+        recentEvents:
+          type: array
+          items:
+            $ref: "#/components/schemas/SavedInspection"
+        criticalAssets:
+          type: array
+          items:
+            $ref: "#/components/schemas/Asset"
+      required:
+        - totalCondominios
+        - totalAssets
+        - assetsOperacional
+        - assetsEmManutencao
+        - assetsInativo
+        - assetsCriticos
+        - totalEventos30d
+        - eventosAlta
+        - eventosMedios
+        - recentEvents
+        - criticalAssets
 
     ErrorResponse:
       type: object

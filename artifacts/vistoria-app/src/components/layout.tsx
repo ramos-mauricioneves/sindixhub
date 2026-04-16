@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useClerk } from "@clerk/react";
 import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
-import { FileText, History, Users, LogOut, ClipboardCheck, Globe, Loader2, Building2 } from "lucide-react";
+import { FileText, History, Users, LogOut, ClipboardCheck, Globe, Loader2, Building2, LayoutDashboard, Package } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const UserContext = createContext<UserProfile | undefined>(undefined);
@@ -62,13 +62,17 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const navItems = [];
   if (role === "admin") {
+    navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
     navItems.push({ label: t("nav.todasVistorias"), path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
     navItems.push({ label: t("nav.condominios"), path: "/app/condominios", icon: Building2 });
     navItems.push({ label: t("nav.usuarios"), path: "/app/admin", icon: Users });
   } else if (role === "sindico") {
+    navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
     navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: History });
+    navItems.push({ label: t("nav.ativos"), path: "/app/ativos", icon: Package });
   } else {
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });
     navItems.push({ label: t("nav.historico"), path: "/app/historico", icon: History });

@@ -37,6 +37,16 @@ export const SaveInspectionBodyUrgencia = {
   alta: "alta",
 } as const;
 
+export type SaveInspectionBodyTipoEvento =
+  (typeof SaveInspectionBodyTipoEvento)[keyof typeof SaveInspectionBodyTipoEvento];
+
+export const SaveInspectionBodyTipoEvento = {
+  vistoria: "vistoria",
+  manutencao: "manutencao",
+  incidente: "incidente",
+  melhoria: "melhoria",
+} as const;
+
 export interface SaveInspectionBody {
   tipo: string;
   urgencia: SaveInspectionBodyUrgencia;
@@ -49,6 +59,8 @@ export interface SaveInspectionBody {
   condominio?: string;
   condominioId?: number;
   areaId?: number;
+  assetId?: number;
+  tipoEvento?: SaveInspectionBodyTipoEvento;
 }
 
 export type UpdateInspectionStatusBodyStatus =
@@ -82,6 +94,16 @@ export const SavedInspectionStatus = {
   enviado: "enviado",
 } as const;
 
+export type SavedInspectionTipoEvento =
+  (typeof SavedInspectionTipoEvento)[keyof typeof SavedInspectionTipoEvento];
+
+export const SavedInspectionTipoEvento = {
+  vistoria: "vistoria",
+  manutencao: "manutencao",
+  incidente: "incidente",
+  melhoria: "melhoria",
+} as const;
+
 export interface SavedInspection {
   id: number;
   tipo: string;
@@ -96,6 +118,8 @@ export interface SavedInspection {
   status: SavedInspectionStatus;
   condominioId?: number;
   areaId?: number;
+  assetId?: number;
+  tipoEvento: SavedInspectionTipoEvento;
   createdByClerkId: string;
   createdAt: string;
 }
@@ -190,6 +214,93 @@ export interface AreaBody {
   tipo: AreaBodyTipo;
 }
 
+export type AssetTipo = (typeof AssetTipo)[keyof typeof AssetTipo];
+
+export const AssetTipo = {
+  equipamento: "equipamento",
+  estrutura: "estrutura",
+  sistema: "sistema",
+} as const;
+
+export type AssetCriticidade =
+  (typeof AssetCriticidade)[keyof typeof AssetCriticidade];
+
+export const AssetCriticidade = {
+  baixa: "baixa",
+  media: "media",
+  alta: "alta",
+} as const;
+
+export type AssetStatus = (typeof AssetStatus)[keyof typeof AssetStatus];
+
+export const AssetStatus = {
+  operacional: "operacional",
+  em_manutencao: "em_manutencao",
+  inativo: "inativo",
+} as const;
+
+export interface Asset {
+  id: number;
+  condominioId: number;
+  areaId?: number;
+  nome: string;
+  tipo: AssetTipo;
+  criticidade: AssetCriticidade;
+  status: AssetStatus;
+  descricao?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type AssetBodyTipo = (typeof AssetBodyTipo)[keyof typeof AssetBodyTipo];
+
+export const AssetBodyTipo = {
+  equipamento: "equipamento",
+  estrutura: "estrutura",
+  sistema: "sistema",
+} as const;
+
+export type AssetBodyCriticidade =
+  (typeof AssetBodyCriticidade)[keyof typeof AssetBodyCriticidade];
+
+export const AssetBodyCriticidade = {
+  baixa: "baixa",
+  media: "media",
+  alta: "alta",
+} as const;
+
+export type AssetBodyStatus =
+  (typeof AssetBodyStatus)[keyof typeof AssetBodyStatus];
+
+export const AssetBodyStatus = {
+  operacional: "operacional",
+  em_manutencao: "em_manutencao",
+  inativo: "inativo",
+} as const;
+
+export interface AssetBody {
+  areaId?: number;
+  nome: string;
+  tipo: AssetBodyTipo;
+  criticidade: AssetBodyCriticidade;
+  status: AssetBodyStatus;
+  descricao?: string;
+}
+
+export interface DashboardSummary {
+  totalCondominios: number;
+  totalAssets: number;
+  assetsOperacional: number;
+  assetsEmManutencao: number;
+  assetsInativo: number;
+  assetsCriticos: number;
+  totalEventos30d: number;
+  eventosAlta: number;
+  eventosMedios: number;
+  recentEvents: SavedInspection[];
+  criticalAssets: Asset[];
+}
+
 export interface ErrorResponse {
   error: string;
   details?: string;
@@ -238,5 +349,43 @@ export type RemoveUserCondominio200 = {
 };
 
 export type DeleteArea200 = {
+  ok: boolean;
+};
+
+export type ListAssetsParams = {
+  areaId?: number;
+  tipo?: ListAssetsTipo;
+  criticidade?: ListAssetsCriticidade;
+  status?: ListAssetsStatus;
+};
+
+export type ListAssetsTipo =
+  (typeof ListAssetsTipo)[keyof typeof ListAssetsTipo];
+
+export const ListAssetsTipo = {
+  equipamento: "equipamento",
+  estrutura: "estrutura",
+  sistema: "sistema",
+} as const;
+
+export type ListAssetsCriticidade =
+  (typeof ListAssetsCriticidade)[keyof typeof ListAssetsCriticidade];
+
+export const ListAssetsCriticidade = {
+  baixa: "baixa",
+  media: "media",
+  alta: "alta",
+} as const;
+
+export type ListAssetsStatus =
+  (typeof ListAssetsStatus)[keyof typeof ListAssetsStatus];
+
+export const ListAssetsStatus = {
+  operacional: "operacional",
+  em_manutencao: "em_manutencao",
+  inativo: "inativo",
+} as const;
+
+export type DeleteAsset200 = {
   ok: boolean;
 };

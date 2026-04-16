@@ -37,10 +37,8 @@ function AuthenticatedRedirect() {
   }
 
   if (user) {
-    if (user.role === "admin") {
-      setLocation("/app/admin");
-    } else if (user.role === "sindico") {
-      setLocation("/app/historico");
+    if (user.role === "admin" || user.role === "sindico") {
+      setLocation("/app/dashboard");
     } else {
       setLocation("/app/nova-vistoria");
     }

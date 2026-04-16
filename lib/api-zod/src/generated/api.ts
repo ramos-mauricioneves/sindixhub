@@ -66,6 +66,8 @@ export const ListInspectionsResponse = zod.object({
       status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
       condominioId: zod.number().optional(),
       areaId: zod.number().optional(),
+      assetId: zod.number().optional(),
+      tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
       createdByClerkId: zod.string(),
       createdAt: zod.coerce.date(),
     }),
@@ -90,6 +92,10 @@ export const SaveInspectionBody = zod.object({
   condominio: zod.string().optional(),
   condominioId: zod.number().optional(),
   areaId: zod.number().optional(),
+  assetId: zod.number().optional(),
+  tipoEvento: zod
+    .enum(["vistoria", "manutencao", "incidente", "melhoria"])
+    .optional(),
 });
 
 /**
@@ -113,6 +119,8 @@ export const GetInspectionResponse = zod.object({
   status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
   condominioId: zod.number().optional(),
   areaId: zod.number().optional(),
+  assetId: zod.number().optional(),
+  tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -142,6 +150,8 @@ export const UpdateInspectionStatusResponse = zod.object({
   status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
   condominioId: zod.number().optional(),
   areaId: zod.number().optional(),
+  assetId: zod.number().optional(),
+  tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -350,4 +360,161 @@ export const DeleteAreaParams = zod.object({
 
 export const DeleteAreaResponse = zod.object({
   ok: zod.boolean(),
+});
+
+/**
+ * @summary List assets for a condominio
+ */
+export const ListAssetsParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const ListAssetsQueryParams = zod.object({
+  areaId: zod.coerce.number().optional(),
+  tipo: zod.enum(["equipamento", "estrutura", "sistema"]).optional(),
+  criticidade: zod.enum(["baixa", "media", "alta"]).optional(),
+  status: zod.enum(["operacional", "em_manutencao", "inativo"]).optional(),
+});
+
+export const ListAssetsResponseItem = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  areaId: zod.number().optional(),
+  nome: zod.string(),
+  tipo: zod.enum(["equipamento", "estrutura", "sistema"]),
+  criticidade: zod.enum(["baixa", "media", "alta"]),
+  status: zod.enum(["operacional", "em_manutencao", "inativo"]),
+  descricao: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListAssetsResponse = zod.array(ListAssetsResponseItem);
+
+/**
+ * @summary Create an asset (admin or sindico)
+ */
+export const CreateAssetParams = zod.object({
+  condominioId: zod.coerce.number(),
+});
+
+export const CreateAssetBody = zod.object({
+  areaId: zod.number().optional(),
+  nome: zod.string(),
+  tipo: zod.enum(["equipamento", "estrutura", "sistema"]),
+  criticidade: zod.enum(["baixa", "media", "alta"]),
+  status: zod.enum(["operacional", "em_manutencao", "inativo"]),
+  descricao: zod.string().optional(),
+});
+
+/**
+ * @summary Get a single asset
+ */
+export const GetAssetParams = zod.object({
+  condominioId: zod.coerce.number(),
+  assetId: zod.coerce.number(),
+});
+
+export const GetAssetResponse = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  areaId: zod.number().optional(),
+  nome: zod.string(),
+  tipo: zod.enum(["equipamento", "estrutura", "sistema"]),
+  criticidade: zod.enum(["baixa", "media", "alta"]),
+  status: zod.enum(["operacional", "em_manutencao", "inativo"]),
+  descricao: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update an asset (admin or sindico)
+ */
+export const UpdateAssetParams = zod.object({
+  condominioId: zod.coerce.number(),
+  assetId: zod.coerce.number(),
+});
+
+export const UpdateAssetBody = zod.object({
+  areaId: zod.number().optional(),
+  nome: zod.string(),
+  tipo: zod.enum(["equipamento", "estrutura", "sistema"]),
+  criticidade: zod.enum(["baixa", "media", "alta"]),
+  status: zod.enum(["operacional", "em_manutencao", "inativo"]),
+  descricao: zod.string().optional(),
+});
+
+export const UpdateAssetResponse = zod.object({
+  id: zod.number(),
+  condominioId: zod.number(),
+  areaId: zod.number().optional(),
+  nome: zod.string(),
+  tipo: zod.enum(["equipamento", "estrutura", "sistema"]),
+  criticidade: zod.enum(["baixa", "media", "alta"]),
+  status: zod.enum(["operacional", "em_manutencao", "inativo"]),
+  descricao: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an asset (admin or sindico)
+ */
+export const DeleteAssetParams = zod.object({
+  condominioId: zod.coerce.number(),
+  assetId: zod.coerce.number(),
+});
+
+export const DeleteAssetResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get dashboard summary for current user
+ */
+export const GetDashboardSummaryResponse = zod.object({
+  totalCondominios: zod.number(),
+  totalAssets: zod.number(),
+  assetsOperacional: zod.number(),
+  assetsEmManutencao: zod.number(),
+  assetsInativo: zod.number(),
+  assetsCriticos: zod.number(),
+  totalEventos30d: zod.number(),
+  eventosAlta: zod.number(),
+  eventosMedios: zod.number(),
+  recentEvents: zod.array(
+    zod.object({
+      id: zod.number(),
+      tipo: zod.string(),
+      urgencia: zod.enum(["baixa", "média", "alta"]),
+      acao: zod.string(),
+      resumo: zod.string(),
+      comunicado: zod.string(),
+      transcricao: zod.string().optional(),
+      analise_imagens: zod.string().optional(),
+      local: zod.string().optional(),
+      condominio: zod.string().optional(),
+      status: zod.enum(["rascunho", "gerado", "pronto_para_envio", "enviado"]),
+      condominioId: zod.number().optional(),
+      areaId: zod.number().optional(),
+      assetId: zod.number().optional(),
+      tipoEvento: zod.enum(["vistoria", "manutencao", "incidente", "melhoria"]),
+      createdByClerkId: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  criticalAssets: zod.array(
+    zod.object({
+      id: zod.number(),
+      condominioId: zod.number(),
+      areaId: zod.number().optional(),
+      nome: zod.string(),
+      tipo: zod.enum(["equipamento", "estrutura", "sistema"]),
+      criticidade: zod.enum(["baixa", "media", "alta"]),
+      status: zod.enum(["operacional", "em_manutencao", "inativo"]),
+      descricao: zod.string().optional(),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
 });

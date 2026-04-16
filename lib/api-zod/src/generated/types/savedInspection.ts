@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { SavedInspectionStatus } from "./savedInspectionStatus";
+import type { SavedInspectionTipoEvento } from "./savedInspectionTipoEvento";
 import type { SavedInspectionUrgencia } from "./savedInspectionUrgencia";
 
 export interface SavedInspection {
@@ -22,6 +23,8 @@ export interface SavedInspection {
   status: SavedInspectionStatus;
   condominioId?: number;
   areaId?: number;
+  assetId?: number;
+  tipoEvento: SavedInspectionTipoEvento;
   createdByClerkId: string;
   createdAt: Date;
 }

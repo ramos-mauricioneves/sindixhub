@@ -49,11 +49,13 @@ React + Vite mobile-first frontend for a condominium inspection assistant. Build
 - `admin` — full access + user management panel
 
 **Pages:**
-- `/` — Landing page (signed-out) or role-based redirect (signed-in)
+- `/` — Landing page (signed-out) or role-based redirect (admin/síndico → dashboard, vistoriador → nova-vistoria)
 - `/sign-in`, `/sign-up` — Clerk auth pages
-- `/app/nova-vistoria` — Create new inspection (MediaRecorder audio + camera capture; includes condomínio + área selectors)
-- `/app/historico` — Inspection history with urgência, status, and condomínio filters; status badges on cards
-- `/app/vistoria/:id` — Inspection detail with copy/WhatsApp buttons + status badge; síndico/admin can advance status (gerado → pronto_para_envio → enviado)
+- `/app/dashboard` — Visão Geral overview: metric cards (events, pending, assets, critical alerts), recent events list, critical assets list, quick actions (admin + síndico only)
+- `/app/ativos` — Assets CMDB: list/create/edit/delete equipment, structures, systems with criticidade + status filters (admin + síndico only)
+- `/app/nova-vistoria` — Create new event: tipoEvento selector (Vistoria/Manutenção/Incidente/Melhoria), condomínio + área + asset selectors, MediaRecorder audio + camera capture
+- `/app/historico` — Event history with urgência, status, tipoEvento filters; tipoEvento badges on cards
+- `/app/vistoria/:id` — Event detail: tipoEvento badge, copy/WhatsApp buttons + status badge; síndico/admin can advance status
 - `/app/admin` — Admin user management panel
 - `/app/condominios` — Admin-only condominium CRUD + area management (inline expandable)
 
@@ -98,9 +100,10 @@ Express 5 backend with Clerk authentication middleware.
 ## Database Schema (`lib/db`)
 
 - `usersTable` — clerkId, email, name, role (admin|sindico|vistoriador), condominio, createdAt
-- `inspectionsTable` — tipo, urgencia, acao, resumo, comunicado, transcricao, analise_imagens, local, condominio, status (gerado|pronto_para_envio|enviado, default: gerado), condominioId (FK), areaId (FK), createdByClerkId, createdAt
+- `inspectionsTable` — tipo, urgencia, acao, resumo, comunicado, transcricao, analise_imagens, local, condominio, status (gerado|pronto_para_envio|enviado, default: gerado), condominioId (FK), areaId (FK), assetId (FK → assetsTable), tipoEvento (vistoria|manutencao|incidente|melhoria, default: vistoria), createdByClerkId, createdAt
 - `condominiosTable` — nome, endereco, cidade, estado, ativo, createdAt
 - `areasTable` — condominioId (FK), nome, tipo (comum|predial), createdAt
+- `assetsTable` — condominioId (FK), areaId (nullable FK), nome, tipo (equipamento|estrutura|sistema), criticidade (baixa|media|alta), status (operacional|em_manutencao|inativo), descricao, createdAt
 - `userCondominiosTable` — clerkId (FK), condominioId (FK) — many-to-many for síndico access scoping
 
 **Inspection Status Workflow:**
