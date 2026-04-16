@@ -105,8 +105,8 @@ Express 5 backend with Clerk authentication middleware.
 
 - `usersTable` — clerkId, email, name, role (admin|sindico|vistoriador), condominio, createdAt
 - `inspectionsTable` — tipo, urgencia, acao, resumo, comunicado, transcricao, analise_imagens, local, condominio, status (gerado|pronto_para_envio|enviado, default: gerado), condominioId (FK), areaId (FK), assetId (FK → assetsTable), tipoEvento (vistoria|manutencao|incidente|melhoria, default: vistoria), createdByClerkId, createdAt
-- `condominiosTable` — nome, endereco, cidade, estado, ativo, createdAt
-- `areasTable` — condominioId (FK), nome, tipo (comum|predial), createdAt
+- `condominiosTable` — nome, cnpj, tipoCondominio (residencial|comercial|misto), endereco, cep, bairro, cidade, estado, totalUnidades, totalBlocos, totalAndares, anoConstrucao, telefone, email, sindico, zelador, administradora, ativo, createdAt
+- `areasTable` — condominioId (FK), nome, tipo (comum|lazer|esportiva|social|servico|estacionamento|infantil|predial|administrativa), descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo, createdAt
 - `assetsTable` — condominioId (FK), areaId (nullable FK), nome, tipo (equipamento|estrutura|sistema), criticidade (baixa|media|alta), status (operacional|em_manutencao|inativo), descricao, createdAt
 - `userCondominiosTable` — clerkId (FK), condominioId (FK) — many-to-many for síndico access scoping
 - `moradoresTable` — condominioId (FK), unidade, nome, tipo (proprietario|inquilino|morador|dependente), telefone, email, ativo, createdAt

@@ -10,5 +10,12 @@ export type AreaTipo = (typeof AreaTipo)[keyof typeof AreaTipo];
 
 export const AreaTipo = {
   comum: "comum",
+  lazer: "lazer",
+  esportiva: "esportiva",
+  social: "social",
+  servico: "servico",
+  estacionamento: "estacionamento",
+  infantil: "infantil",
   predial: "predial",
+  administrativa: "administrativa",
 } as const;

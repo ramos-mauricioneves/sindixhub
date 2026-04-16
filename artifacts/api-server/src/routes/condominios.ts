@@ -5,12 +5,48 @@ import { requireAuth, requireRole, upsertUser } from "../middlewares/requireAuth
 
 const router = Router();
 
+const VALID_TIPO_CONDOMINIO = ["residencial", "comercial", "misto"];
+const VALID_AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa"];
+
 function formatCondo(c: typeof condominiosTable.$inferSelect) {
-  return { id: c.id, nome: c.nome, endereco: c.endereco, cidade: c.cidade, estado: c.estado, ativo: c.ativo, createdAt: c.createdAt };
+  return {
+    id: c.id,
+    nome: c.nome,
+    cnpj: c.cnpj ?? null,
+    tipoCondominio: c.tipoCondominio,
+    endereco: c.endereco ?? null,
+    cep: c.cep ?? null,
+    bairro: c.bairro ?? null,
+    cidade: c.cidade ?? null,
+    estado: c.estado ?? null,
+    totalUnidades: c.totalUnidades ?? null,
+    totalBlocos: c.totalBlocos ?? null,
+    totalAndares: c.totalAndares ?? null,
+    anoConstrucao: c.anoConstrucao ?? null,
+    telefone: c.telefone ?? null,
+    email: c.email ?? null,
+    sindico: c.sindico ?? null,
+    zelador: c.zelador ?? null,
+    administradora: c.administradora ?? null,
+    ativo: c.ativo,
+    createdAt: c.createdAt,
+  };
 }
 
 function formatArea(a: typeof areasTable.$inferSelect) {
-  return { id: a.id, condominioId: a.condominioId, nome: a.nome, tipo: a.tipo, createdAt: a.createdAt };
+  return {
+    id: a.id,
+    condominioId: a.condominioId,
+    nome: a.nome,
+    tipo: a.tipo,
+    descricao: a.descricao ?? null,
+    capacidade: a.capacidade ?? null,
+    reservavel: a.reservavel,
+    horarioAbertura: a.horarioAbertura ?? null,
+    horarioFechamento: a.horarioFechamento ?? null,
+    ativo: a.ativo,
+    createdAt: a.createdAt,
+  };
 }
 
 async function getUserCondominioIds(userId: number): Promise<number[]> {
@@ -18,7 +54,6 @@ async function getUserCondominioIds(userId: number): Promise<number[]> {
   return rows.map(r => r.condominioId);
 }
 
-// GET /condominios
 router.get("/condominios", requireAuth, async (req, res): Promise<void> => {
   const auth = req.auth!;
   const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
@@ -37,18 +72,39 @@ router.get("/condominios", requireAuth, async (req, res): Promise<void> => {
   res.json(rows.map(formatCondo));
 });
 
-// POST /condominios
 router.post("/condominios", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
-  const { nome, endereco, cidade, estado, ativo } = req.body;
+  const { nome, cnpj, tipoCondominio, endereco, cep, bairro, cidade, estado,
+    totalUnidades, totalBlocos, totalAndares, anoConstrucao, telefone, email,
+    sindico, zelador, administradora, ativo } = req.body;
   if (!nome || typeof nome !== "string") { res.status(400).json({ error: "nome é obrigatório" }); return; }
 
+  if (tipoCondominio && !VALID_TIPO_CONDOMINIO.includes(tipoCondominio)) {
+    res.status(400).json({ error: "tipoCondominio inválido. Valores: residencial, comercial, misto" }); return;
+  }
+
   const [created] = await db.insert(condominiosTable).values({
-    nome, endereco: endereco ?? null, cidade: cidade ?? null, estado: estado ?? null, ativo: ativo !== false,
+    nome,
+    cnpj: cnpj ?? null,
+    tipoCondominio: tipoCondominio ?? "residencial",
+    endereco: endereco ?? null,
+    cep: cep ?? null,
+    bairro: bairro ?? null,
+    cidade: cidade ?? null,
+    estado: estado ?? null,
+    totalUnidades: totalUnidades ? parseInt(totalUnidades) : null,
+    totalBlocos: totalBlocos ? parseInt(totalBlocos) : null,
+    totalAndares: totalAndares ? parseInt(totalAndares) : null,
+    anoConstrucao: anoConstrucao ? parseInt(anoConstrucao) : null,
+    telefone: telefone ?? null,
+    email: email ?? null,
+    sindico: sindico ?? null,
+    zelador: zelador ?? null,
+    administradora: administradora ?? null,
+    ativo: ativo !== false,
   }).returning();
   res.status(201).json(formatCondo(created));
 });
 
-// GET /condominios/:id
 router.get("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
@@ -57,20 +113,44 @@ router.get("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(formatCondo(condo));
 });
 
-// PATCH /condominios/:id
 router.patch("/condominios/:id", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) { res.status(400).json({ error: "ID inválido" }); return; }
-  const { nome, endereco, cidade, estado, ativo } = req.body;
+  const { nome, cnpj, tipoCondominio, endereco, cep, bairro, cidade, estado,
+    totalUnidades, totalBlocos, totalAndares, anoConstrucao, telefone, email,
+    sindico, zelador, administradora, ativo } = req.body;
   if (!nome || typeof nome !== "string") { res.status(400).json({ error: "nome é obrigatório" }); return; }
+
+  if (tipoCondominio && !VALID_TIPO_CONDOMINIO.includes(tipoCondominio)) {
+    res.status(400).json({ error: "tipoCondominio inválido" }); return;
+  }
+
   const [updated] = await db.update(condominiosTable)
-    .set({ nome, endereco: endereco ?? null, cidade: cidade ?? null, estado: estado ?? null, ativo: ativo !== false })
+    .set({
+      nome,
+      cnpj: cnpj ?? null,
+      tipoCondominio: tipoCondominio ?? "residencial",
+      endereco: endereco ?? null,
+      cep: cep ?? null,
+      bairro: bairro ?? null,
+      cidade: cidade ?? null,
+      estado: estado ?? null,
+      totalUnidades: totalUnidades != null ? parseInt(totalUnidades) : null,
+      totalBlocos: totalBlocos != null ? parseInt(totalBlocos) : null,
+      totalAndares: totalAndares != null ? parseInt(totalAndares) : null,
+      anoConstrucao: anoConstrucao != null ? parseInt(anoConstrucao) : null,
+      telefone: telefone ?? null,
+      email: email ?? null,
+      sindico: sindico ?? null,
+      zelador: zelador ?? null,
+      administradora: administradora ?? null,
+      ativo: ativo !== false,
+    })
     .where(eq(condominiosTable.id, id)).returning();
   if (!updated) { res.status(404).json({ error: "Condomínio não encontrado" }); return; }
   res.json(formatCondo(updated));
 });
 
-// GET /condominios/:condominioId/areas
 router.get("/condominios/:condominioId/areas", requireAuth, async (req, res): Promise<void> => {
   const condominioId = parseInt(req.params.condominioId as string, 10);
   if (isNaN(condominioId)) { res.status(400).json({ error: "ID inválido" }); return; }
@@ -78,7 +158,6 @@ router.get("/condominios/:condominioId/areas", requireAuth, async (req, res): Pr
   res.json(rows.map(formatArea));
 });
 
-// POST /condominios/:condominioId/areas
 router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): Promise<void> => {
   const auth = req.auth!;
   const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
@@ -89,15 +168,59 @@ router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): P
   const condominioId = parseInt(req.params.condominioId as string, 10);
   if (isNaN(condominioId)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const { nome, tipo } = req.body;
+  const { nome, tipo, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento } = req.body;
   if (!nome || !tipo) { res.status(400).json({ error: "nome e tipo são obrigatórios" }); return; }
-  if (!["comum", "predial"].includes(tipo)) { res.status(400).json({ error: "tipo deve ser comum ou predial" }); return; }
+  if (!VALID_AREA_TIPOS.includes(tipo)) {
+    res.status(400).json({ error: `tipo inválido. Valores: ${VALID_AREA_TIPOS.join(", ")}` }); return;
+  }
 
-  const [created] = await db.insert(areasTable).values({ condominioId, nome, tipo }).returning();
+  const [created] = await db.insert(areasTable).values({
+    condominioId,
+    nome,
+    tipo,
+    descricao: descricao ?? null,
+    capacidade: capacidade ? parseInt(capacidade) : null,
+    reservavel: reservavel === true,
+    horarioAbertura: horarioAbertura ?? null,
+    horarioFechamento: horarioFechamento ?? null,
+  }).returning();
   res.status(201).json(formatArea(created));
 });
 
-// DELETE /condominios/:condominioId/areas/:areaId
+router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (req, res): Promise<void> => {
+  const auth = req.auth!;
+  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
+  const name = (auth as any).sessionClaims?.name as string | undefined;
+  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+  if (user.role === "vistoriador") { res.status(403).json({ error: "Acesso negado." }); return; }
+
+  const condominioId = parseInt(req.params.condominioId as string, 10);
+  const areaId = parseInt(req.params.areaId as string, 10);
+  if (isNaN(condominioId) || isNaN(areaId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
+
+  const { nome, tipo, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo } = req.body;
+
+  if (tipo && !VALID_AREA_TIPOS.includes(tipo)) {
+    res.status(400).json({ error: `tipo inválido. Valores: ${VALID_AREA_TIPOS.join(", ")}` }); return;
+  }
+
+  const updateData: Partial<typeof areasTable.$inferInsert> = {};
+  if (nome !== undefined) updateData.nome = nome;
+  if (tipo !== undefined) updateData.tipo = tipo;
+  if (descricao !== undefined) updateData.descricao = descricao;
+  if (capacidade !== undefined) updateData.capacidade = capacidade ? parseInt(capacidade) : null;
+  if (reservavel !== undefined) updateData.reservavel = reservavel;
+  if (horarioAbertura !== undefined) updateData.horarioAbertura = horarioAbertura;
+  if (horarioFechamento !== undefined) updateData.horarioFechamento = horarioFechamento;
+  if (ativo !== undefined) updateData.ativo = ativo;
+
+  const [updated] = await db.update(areasTable).set(updateData).where(
+    and(eq(areasTable.id, areaId), eq(areasTable.condominioId, condominioId))
+  ).returning();
+  if (!updated) { res.status(404).json({ error: "Área não encontrada neste condomínio" }); return; }
+  res.json(formatArea(updated));
+});
+
 router.delete("/condominios/:condominioId/areas/:areaId", requireAuth, async (req, res): Promise<void> => {
   const auth = req.auth!;
   const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
@@ -105,13 +228,15 @@ router.delete("/condominios/:condominioId/areas/:areaId", requireAuth, async (re
   const user = await upsertUser(auth.userId, emailAddress ?? "", name);
   if (user.role === "vistoriador") { res.status(403).json({ error: "Acesso negado." }); return; }
 
+  const condominioId = parseInt(req.params.condominioId as string, 10);
   const areaId = parseInt(req.params.areaId as string, 10);
-  if (isNaN(areaId)) { res.status(400).json({ error: "ID inválido" }); return; }
-  await db.delete(areasTable).where(eq(areasTable.id, areaId));
+  if (isNaN(condominioId) || isNaN(areaId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
+  await db.delete(areasTable).where(
+    and(eq(areasTable.id, areaId), eq(areasTable.condominioId, condominioId))
+  );
   res.json({ ok: true });
 });
 
-// GET /users/:clerkId/condominios
 router.get("/users/:clerkId/condominios", requireAuth, async (req, res): Promise<void> => {
   const clerkId = req.params.clerkId as string;
   const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
@@ -122,7 +247,6 @@ router.get("/users/:clerkId/condominios", requireAuth, async (req, res): Promise
   res.json(rows.map(formatCondo));
 });
 
-// POST /users/:clerkId/condominios
 router.post("/users/:clerkId/condominios", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
   const clerkId = req.params.clerkId as string;
   const condominioId = parseInt(req.body.condominioId, 10);
@@ -139,7 +263,6 @@ router.post("/users/:clerkId/condominios", requireAuth, requireRole("admin"), as
   res.json({ ok: true });
 });
 
-// DELETE /users/:clerkId/condominios/:condominioId
 router.delete("/users/:clerkId/condominios/:condominioId", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
   const clerkId = req.params.clerkId as string;
   const condominioId = parseInt(req.params.condominioId as string, 10);

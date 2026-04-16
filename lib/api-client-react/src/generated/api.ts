@@ -1576,6 +1576,94 @@ export const useCreateArea = <
 };
 
 /**
+ * @summary Update an area (admin or sindico)
+ */
+export const getUpdateAreaUrl = (condominioId: number, areaId: number) => {
+  return `/api/condominios/${condominioId}/areas/${areaId}`;
+};
+
+export const updateArea = async (
+  condominioId: number,
+  areaId: number,
+  areaBody: AreaBody,
+  options?: RequestInit,
+): Promise<Area> => {
+  return customFetch<Area>(getUpdateAreaUrl(condominioId, areaId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(areaBody),
+  });
+};
+
+export const getUpdateAreaMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateArea>>,
+    TError,
+    { condominioId: number; areaId: number; data: BodyType<AreaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateArea>>,
+  TError,
+  { condominioId: number; areaId: number; data: BodyType<AreaBody> },
+  TContext
+> => {
+  const mutationKey = ["updateArea"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateArea>>,
+    { condominioId: number; areaId: number; data: BodyType<AreaBody> }
+  > = (props) => {
+    const { condominioId, areaId, data } = props ?? {};
+
+    return updateArea(condominioId, areaId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateAreaMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateArea>>
+>;
+export type UpdateAreaMutationBody = BodyType<AreaBody>;
+export type UpdateAreaMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an area (admin or sindico)
+ */
+export const useUpdateArea = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateArea>>,
+    TError,
+    { condominioId: number; areaId: number; data: BodyType<AreaBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateArea>>,
+  TError,
+  { condominioId: number; areaId: number; data: BodyType<AreaBody> },
+  TContext
+> => {
+  return useMutation(getUpdateAreaMutationOptions(options));
+};
+
+/**
  * @summary Delete an area (admin or sindico)
  */
 export const getDeleteAreaUrl = (condominioId: number, areaId: number) => {

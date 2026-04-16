@@ -10,5 +10,12 @@ export type AreaBodyTipo = (typeof AreaBodyTipo)[keyof typeof AreaBodyTipo];
 
 export const AreaBodyTipo = {
   comum: "comum",
+  lazer: "lazer",
+  esportiva: "esportiva",
+  social: "social",
+  servico: "servico",
+  estacionamento: "estacionamento",
+  infantil: "infantil",
   predial: "predial",
+  administrativa: "administrativa",
 } as const;

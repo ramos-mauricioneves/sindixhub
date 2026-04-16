@@ -21,6 +21,8 @@ export * from "./assetStatus";
 export * from "./assetTipo";
 export * from "./condominio";
 export * from "./condominioBody";
+export * from "./condominioBodyTipoCondominio";
+export * from "./condominioTipoCondominio";
 export * from "./dashboardSummary";
 export * from "./deleteArea200";
 export * from "./deleteAsset200";

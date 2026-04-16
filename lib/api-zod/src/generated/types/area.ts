@@ -12,5 +12,11 @@ export interface Area {
   condominioId: number;
   nome: string;
   tipo: AreaTipo;
+  descricao?: string | null;
+  capacidade?: number | null;
+  reservavel: boolean;
+  horarioAbertura?: string | null;
+  horarioFechamento?: string | null;
+  ativo: boolean;
   createdAt: Date;
 }

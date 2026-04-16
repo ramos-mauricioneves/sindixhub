@@ -169,21 +169,65 @@ export interface UserCondominioBody {
   condominioId: number;
 }
 
+export type CondominioTipoCondominio =
+  (typeof CondominioTipoCondominio)[keyof typeof CondominioTipoCondominio];
+
+export const CondominioTipoCondominio = {
+  residencial: "residencial",
+  comercial: "comercial",
+  misto: "misto",
+} as const;
+
 export interface Condominio {
   id: number;
   nome: string;
-  endereco?: string;
-  cidade?: string;
-  estado?: string;
+  cnpj?: string | null;
+  tipoCondominio: CondominioTipoCondominio;
+  endereco?: string | null;
+  cep?: string | null;
+  bairro?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  totalUnidades?: number | null;
+  totalBlocos?: number | null;
+  totalAndares?: number | null;
+  anoConstrucao?: number | null;
+  telefone?: string | null;
+  email?: string | null;
+  sindico?: string | null;
+  zelador?: string | null;
+  administradora?: string | null;
   ativo: boolean;
   createdAt: string;
 }
 
+export type CondominioBodyTipoCondominio =
+  (typeof CondominioBodyTipoCondominio)[keyof typeof CondominioBodyTipoCondominio];
+
+export const CondominioBodyTipoCondominio = {
+  residencial: "residencial",
+  comercial: "comercial",
+  misto: "misto",
+} as const;
+
 export interface CondominioBody {
   nome: string;
+  cnpj?: string;
+  tipoCondominio?: CondominioBodyTipoCondominio;
   endereco?: string;
+  cep?: string;
+  bairro?: string;
   cidade?: string;
   estado?: string;
+  totalUnidades?: number;
+  totalBlocos?: number;
+  totalAndares?: number;
+  anoConstrucao?: number;
+  telefone?: string;
+  email?: string;
+  sindico?: string;
+  zelador?: string;
+  administradora?: string;
   ativo?: boolean;
 }
 
@@ -191,7 +235,14 @@ export type AreaTipo = (typeof AreaTipo)[keyof typeof AreaTipo];
 
 export const AreaTipo = {
   comum: "comum",
+  lazer: "lazer",
+  esportiva: "esportiva",
+  social: "social",
+  servico: "servico",
+  estacionamento: "estacionamento",
+  infantil: "infantil",
   predial: "predial",
+  administrativa: "administrativa",
 } as const;
 
 export interface Area {
@@ -199,6 +250,12 @@ export interface Area {
   condominioId: number;
   nome: string;
   tipo: AreaTipo;
+  descricao?: string | null;
+  capacidade?: number | null;
+  reservavel: boolean;
+  horarioAbertura?: string | null;
+  horarioFechamento?: string | null;
+  ativo: boolean;
   createdAt: string;
 }
 
@@ -206,12 +263,24 @@ export type AreaBodyTipo = (typeof AreaBodyTipo)[keyof typeof AreaBodyTipo];
 
 export const AreaBodyTipo = {
   comum: "comum",
+  lazer: "lazer",
+  esportiva: "esportiva",
+  social: "social",
+  servico: "servico",
+  estacionamento: "estacionamento",
+  infantil: "infantil",
   predial: "predial",
+  administrativa: "administrativa",
 } as const;
 
 export interface AreaBody {
   nome: string;
   tipo: AreaBodyTipo;
+  descricao?: string;
+  capacidade?: number;
+  reservavel?: boolean;
+  horarioAbertura?: string;
+  horarioFechamento?: string;
 }
 
 export type AssetTipo = (typeof AssetTipo)[keyof typeof AssetTipo];

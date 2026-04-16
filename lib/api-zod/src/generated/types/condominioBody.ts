@@ -5,11 +5,25 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.3.0
  */
+import type { CondominioBodyTipoCondominio } from "./condominioBodyTipoCondominio";
 
 export interface CondominioBody {
   nome: string;
+  cnpj?: string;
+  tipoCondominio?: CondominioBodyTipoCondominio;
   endereco?: string;
+  cep?: string;
+  bairro?: string;
   cidade?: string;
   estado?: string;
+  totalUnidades?: number;
+  totalBlocos?: number;
+  totalAndares?: number;
+  anoConstrucao?: number;
+  telefone?: string;
+  email?: string;
+  sindico?: string;
+  zelador?: string;
+  administradora?: string;
   ativo?: boolean;
 }

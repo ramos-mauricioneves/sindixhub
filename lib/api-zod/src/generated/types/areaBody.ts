@@ -10,4 +10,9 @@ import type { AreaBodyTipo } from "./areaBodyTipo";
 export interface AreaBody {
   nome: string;
   tipo: AreaBodyTipo;
+  descricao?: string;
+  capacidade?: number;
+  reservavel?: boolean;
+  horarioAbertura?: string;
+  horarioFechamento?: string;
 }

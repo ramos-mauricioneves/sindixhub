@@ -489,6 +489,34 @@ paths:
                 $ref: "#/components/schemas/Area"
 
   /condominios/{condominioId}/areas/{areaId}:
+    patch:
+      operationId: updateArea
+      tags: [areas]
+      summary: Update an area (admin or sindico)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: areaId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AreaBody"
+      responses:
+        "200":
+          description: Area updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Area"
     delete:
       operationId: deleteArea
       tags: [areas]
@@ -1200,12 +1228,54 @@ components:
           type: integer
         nome:
           type: string
+        cnpj:
+          type: string
+          nullable: true
+        tipoCondominio:
+          type: string
+          enum: [residencial, comercial, misto]
         endereco:
           type: string
+          nullable: true
+        cep:
+          type: string
+          nullable: true
+        bairro:
+          type: string
+          nullable: true
         cidade:
           type: string
+          nullable: true
         estado:
           type: string
+          nullable: true
+        totalUnidades:
+          type: integer
+          nullable: true
+        totalBlocos:
+          type: integer
+          nullable: true
+        totalAndares:
+          type: integer
+          nullable: true
+        anoConstrucao:
+          type: integer
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        sindico:
+          type: string
+          nullable: true
+        zelador:
+          type: string
+          nullable: true
+        administradora:
+          type: string
+          nullable: true
         ativo:
           type: boolean
         createdAt:
@@ -1214,6 +1284,7 @@ components:
       required:
         - id
         - nome
+        - tipoCondominio
         - ativo
         - createdAt
 
@@ -1222,11 +1293,38 @@ components:
       properties:
         nome:
           type: string
+        cnpj:
+          type: string
+        tipoCondominio:
+          type: string
+          enum: [residencial, comercial, misto]
         endereco:
+          type: string
+        cep:
+          type: string
+        bairro:
           type: string
         cidade:
           type: string
         estado:
+          type: string
+        totalUnidades:
+          type: integer
+        totalBlocos:
+          type: integer
+        totalAndares:
+          type: integer
+        anoConstrucao:
+          type: integer
+        telefone:
+          type: string
+        email:
+          type: string
+        sindico:
+          type: string
+        zelador:
+          type: string
+        administradora:
           type: string
         ativo:
           type: boolean
@@ -1244,7 +1342,23 @@ components:
           type: string
         tipo:
           type: string
-          enum: [comum, predial]
+          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa]
+        descricao:
+          type: string
+          nullable: true
+        capacidade:
+          type: integer
+          nullable: true
+        reservavel:
+          type: boolean
+        horarioAbertura:
+          type: string
+          nullable: true
+        horarioFechamento:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -1253,6 +1367,8 @@ components:
         - condominioId
         - nome
         - tipo
+        - reservavel
+        - ativo
         - createdAt
 
     AreaBody:
@@ -1262,7 +1378,17 @@ components:
           type: string
         tipo:
           type: string
-          enum: [comum, predial]
+          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa]
+        descricao:
+          type: string
+        capacidade:
+          type: integer
+        reservavel:
+          type: boolean
+        horarioAbertura:
+          type: string
+        horarioFechamento:
+          type: string
       required:
         - nome
         - tipo
