@@ -1,7 +1,7 @@
 import { useParams } from "wouter";
 import { useGetPublicAsset } from "@workspace/api-client-react";
 import { Package, AlertTriangle, CheckCircle2, Wrench, PackageX, ClipboardCheck, Loader2, MapPin, FileText } from "lucide-react";
-import { SindixHubLogo } from "@/components/sindixhub-logo";
+import { SindixHubIcon } from "@/components/sindixhub-icon";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ export default function AssetPublicPage() {
     <div className="min-h-[100dvh] bg-background pb-12">
       <div className="bg-primary text-primary-foreground py-6 px-4 shadow">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <SindixHubLogo className="h-7 w-7" />
+          <SindixHubIcon className="h-7 w-7" size={28} />
           <div>
             <p className="text-xs opacity-90">SindixHub</p>
             <p className="font-bold text-lg leading-tight">{data.condominioNome}</p>

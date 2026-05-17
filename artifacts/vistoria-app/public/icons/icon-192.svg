@@ -1,10 +1,16 @@
 <svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="192" height="192" rx="38" fill="#4338ca"/>
-  <circle cx="96" cy="96" r="20.8" fill="white"/>
-  <circle cx="96" cy="36" r="15.2" fill="white"/>
-  <circle cx="148.8" cy="128" r="15.2" fill="white"/>
-  <circle cx="43.2" cy="128" r="15.2" fill="white"/>
-  <line x1="96" y1="75.2" x2="96" y2="51.2" stroke="white" stroke-width="12.8" stroke-linecap="round"/>
-  <line x1="112.8" y1="106.4" x2="136" y2="118.4" stroke="white" stroke-width="12.8" stroke-linecap="round"/>
-  <line x1="79.2" y1="106.4" x2="56" y2="118.4" stroke="white" stroke-width="12.8" stroke-linecap="round"/>
+  <rect width="192" height="192" rx="38" fill="#0F4C75"/>
+  <!-- Shield shape -->
+  <path d="M96 30L43 56V100C43 137 65 167 96 178C127 167 149 137 149 100V56L96 30Z" fill="white" fill-opacity="0.15" stroke="white" stroke-width="5.5" stroke-linejoin="round"/>
+  <!-- Center hub node -->
+  <circle cx="96" cy="99" r="11" fill="white"/>
+  <!-- Top spoke + node -->
+  <line x1="96" y1="88" x2="96" y2="66" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+  <circle cx="96" cy="59" r="9" fill="white"/>
+  <!-- Bottom-left spoke + node -->
+  <line x1="86" y1="108" x2="70" y2="124" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+  <circle cx="63" cy="131" r="9" fill="white"/>
+  <!-- Bottom-right spoke + node -->
+  <line x1="106" y1="108" x2="122" y2="124" stroke="white" stroke-width="5.5" stroke-linecap="round"/>
+  <circle cx="129" cy="131" r="9" fill="white"/>
 </svg>
