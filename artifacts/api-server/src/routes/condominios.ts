@@ -6,7 +6,6 @@ import { requireAuth, requireRole, upsertUser } from "../middlewares/requireAuth
 const router = Router();
 
 const VALID_TIPO_CONDOMINIO = ["residencial", "comercial", "misto"];
-const VALID_AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao"];
 const VALID_PRIVACIDADE = ["publica", "privada", "mista"];
 
 function formatCondo(c: typeof condominiosTable.$inferSelect) {
