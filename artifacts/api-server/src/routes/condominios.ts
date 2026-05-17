@@ -174,7 +174,7 @@ router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): P
 
   const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento } = req.body;
   if (!nome || !tipo) { res.status(400).json({ error: "nome e tipo são obrigatórios" }); return; }
-  if (!tipo.trim()) { res.status(400).json({ error: "tipo não pode ser vazio" }); return; }
+  if (typeof tipo !== "string" || !tipo.trim()) { res.status(400).json({ error: "tipo deve ser uma string não vazia" }); return; }
   if (privacidade !== undefined && privacidade !== null && !VALID_PRIVACIDADE.includes(privacidade)) {
     res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }); return;
   }
@@ -215,8 +215,8 @@ router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (req
 
   const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo } = req.body;
 
-  if (tipo !== undefined && !tipo.trim()) {
-    res.status(400).json({ error: "tipo não pode ser vazio" }); return;
+  if (tipo !== undefined && (typeof tipo !== "string" || !tipo.trim())) {
+    res.status(400).json({ error: "tipo deve ser uma string não vazia" }); return;
   }
   if (privacidade !== undefined && privacidade !== null && !VALID_PRIVACIDADE.includes(privacidade)) {
     res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }); return;
