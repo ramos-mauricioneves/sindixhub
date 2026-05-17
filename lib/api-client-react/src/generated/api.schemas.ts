@@ -370,6 +370,26 @@ export interface Asset {
   updatedAt: string;
 }
 
+export type PublicAssetUltimasVistoriasItem = {
+  id: number;
+  tipo: string;
+  urgencia: string;
+  resumo: string;
+  createdAt: string;
+};
+
+export interface PublicAsset {
+  id: number;
+  nome: string;
+  tipo: string;
+  criticidade: string;
+  status: string;
+  descricao?: string;
+  condominioNome: string;
+  areaNome?: string;
+  ultimasVistorias: PublicAssetUltimasVistoriasItem[];
+}
+
 export type AssetBodyTipo = (typeof AssetBodyTipo)[keyof typeof AssetBodyTipo];
 
 export const AssetBodyTipo = {

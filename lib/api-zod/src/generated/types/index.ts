@@ -42,6 +42,8 @@ export * from "./listAssetsTipo";
 export * from "./listInspectionsParams";
 export * from "./listInspectionsStatus";
 export * from "./listInspectionsUrgencia";
+export * from "./publicAsset";
+export * from "./publicAssetUltimasVistoriasItem";
 export * from "./removeUserCondominio200";
 export * from "./savedInspection";
 export * from "./savedInspectionEscopo";

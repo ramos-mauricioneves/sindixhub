@@ -545,6 +545,31 @@ paths:
                 required:
                   - ok
 
+  /public/assets/{assetId}:
+    get:
+      operationId: getPublicAsset
+      tags: [assets]
+      summary: Get public asset info (for QR code scans, no auth)
+      parameters:
+        - name: assetId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Public asset details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicAsset"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /condominios/{condominioId}/assets:
     get:
       operationId: listAssets
@@ -1190,6 +1215,51 @@ components:
         - status
         - createdAt
         - updatedAt
+
+    PublicAsset:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        tipo:
+          type: string
+        criticidade:
+          type: string
+        status:
+          type: string
+        descricao:
+          type: string
+        condominioNome:
+          type: string
+        areaNome:
+          type: string
+        ultimasVistorias:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              tipo:
+                type: string
+              urgencia:
+                type: string
+              resumo:
+                type: string
+              createdAt:
+                type: string
+                format: date-time
+            required: [id, tipo, urgencia, resumo, createdAt]
+      required:
+        - id
+        - nome
+        - tipo
+        - criticidade
+        - status
+        - condominioNome
+        - ultimasVistorias
 
     AssetBody:
       type: object

@@ -36,6 +36,7 @@ import type {
   InspectionReport,
   ListAssetsParams,
   ListInspectionsParams,
+  PublicAsset,
   RemoveUserCondominio200,
   SaveInspectionBody,
   SavedInspection,
@@ -1743,6 +1744,93 @@ export const useDeleteArea = <
 > => {
   return useMutation(getDeleteAreaMutationOptions(options));
 };
+
+/**
+ * @summary Get public asset info (for QR code scans, no auth)
+ */
+export const getGetPublicAssetUrl = (assetId: number) => {
+  return `/api/public/assets/${assetId}`;
+};
+
+export const getPublicAsset = async (
+  assetId: number,
+  options?: RequestInit,
+): Promise<PublicAsset> => {
+  return customFetch<PublicAsset>(getGetPublicAssetUrl(assetId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicAssetQueryKey = (assetId: number) => {
+  return [`/api/public/assets/${assetId}`] as const;
+};
+
+export const getGetPublicAssetQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicAsset>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  assetId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicAsset>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicAssetQueryKey(assetId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPublicAsset>>> = ({
+    signal,
+  }) => getPublicAsset(assetId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!assetId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicAsset>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicAssetQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicAsset>>
+>;
+export type GetPublicAssetQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get public asset info (for QR code scans, no auth)
+ */
+
+export function useGetPublicAsset<
+  TData = Awaited<ReturnType<typeof getPublicAsset>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  assetId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicAsset>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicAssetQueryOptions(assetId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary List assets for a condominio

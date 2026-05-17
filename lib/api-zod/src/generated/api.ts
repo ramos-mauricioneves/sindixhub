@@ -576,6 +576,33 @@ export const DeleteAreaResponse = zod.object({
 });
 
 /**
+ * @summary Get public asset info (for QR code scans, no auth)
+ */
+export const GetPublicAssetParams = zod.object({
+  assetId: zod.coerce.number(),
+});
+
+export const GetPublicAssetResponse = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  tipo: zod.string(),
+  criticidade: zod.string(),
+  status: zod.string(),
+  descricao: zod.string().optional(),
+  condominioNome: zod.string(),
+  areaNome: zod.string().optional(),
+  ultimasVistorias: zod.array(
+    zod.object({
+      id: zod.number(),
+      tipo: zod.string(),
+      urgencia: zod.string(),
+      resumo: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
  * @summary List assets for a condominio
  */
 export const ListAssetsParams = zod.object({
