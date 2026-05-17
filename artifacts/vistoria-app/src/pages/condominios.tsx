@@ -1,24 +1,30 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  Building2, Plus, Trash2, ChevronDown, ChevronUp, Loader2, AlertCircle,
+  Building2, Plus, Trash2, ChevronDown, ChevronUp, ChevronRight, Loader2, AlertCircle,
   Pencil, X, Check, MapPin, Users, Clock, Hash, Phone, Mail, Shield, Wrench,
-  FileText, Star, AlertTriangle, Calendar, ShieldCheck
+  FileText, Star, AlertTriangle, Calendar, ShieldCheck, Package
 } from "lucide-react";
 import {
   useListCondominios, useCreateCondominio, useUpdateCondominio,
   useListAreas, useCreateArea, useUpdateArea, useDeleteArea,
+  useListAssets, useCreateAsset, useUpdateAsset, useDeleteAsset,
   useListContratos, useCreateContrato, useUpdateContrato, useDeleteContrato,
   useListPrestadores, useCreatePrestador, useUpdatePrestador, useDeletePrestador,
   useListDocumentos, useCreateDocumento, useUpdateDocumento, useDeleteDocumento,
   useGetSeguroPredial, useUpsertSeguroPredial,
   useGetCondominioHealth,
   Condominio, CondominioBody, Area, AreaBodyPrivacidade, AreaPrivacidade,
+  Asset, AssetBody,
   ContratoCondominio, PrestadorCondominio, DocumentoCondominio,
-  getListCondominiosQueryKey, getListAreasQueryKey,
+  getListCondominiosQueryKey, getListAreasQueryKey, getListAssetsQueryKey,
   getListContratosQueryKey, getListPrestadoresQueryKey,
   getListDocumentosQueryKey, getGetSeguroPredialQueryKey, getGetCondominioHealthQueryKey,
 } from "@workspace/api-client-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { AREA_CATEGORIES, AreaTemplate, KNOWN_AREA_TIPOS } from "@/lib/area-templates";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -114,6 +120,9 @@ const emptyAreaForm = (): AreaForm => ({
 });
 
 type PendingArea = { id: string; nome: string; tipo: string; privacidade: "publica" | "privada" | "mista"; bloco: string; andar: string; };
+
+type AssetForm = { nome: string; tipo: string; criticidade: string; status: string; descricao: string; };
+const emptyAssetForm = (): AssetForm => ({ nome: "", tipo: "equipamento", criticidade: "baixa", status: "operacional", descricao: "" });
 
 // ─── Helper Components ───────────────────────────────────────────────────────
 
@@ -523,6 +532,471 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
 
       <CatalogDialog condominioId={condominioId} open={catalogDialogOpen} onOpenChange={setCatalogDialogOpen}
         onDone={() => qc.invalidateQueries({ queryKey: getListAreasQueryKey(condominioId) })} onOpenCustomArea={openNewArea} />
+    </div>
+  );
+}
+
+// ─── AssetDialog ──────────────────────────────────────────────────────────────
+
+function AssetDialog({
+  condominioId, areaId, asset, open, onOpenChange,
+}: {
+  condominioId: number;
+  areaId?: number;
+  asset: Asset | null;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [form, setForm] = useState<AssetForm>(emptyAssetForm());
+
+  useEffect(() => {
+    if (open) {
+      setForm(asset
+        ? { nome: asset.nome, tipo: asset.tipo, criticidade: asset.criticidade, status: asset.status, descricao: asset.descricao || "" }
+        : emptyAssetForm());
+    }
+  }, [asset, open]);
+
+  const createAsset = useCreateAsset();
+  const updateAsset = useUpdateAsset();
+  const invalidate = () => qc.invalidateQueries({ queryKey: getListAssetsQueryKey(condominioId) });
+
+  const handleSave = () => {
+    if (!form.nome.trim()) return;
+    const data: AssetBody = {
+      nome: form.nome.trim(),
+      tipo: form.tipo as AssetBody["tipo"],
+      criticidade: form.criticidade as AssetBody["criticidade"],
+      status: form.status as AssetBody["status"],
+      descricao: form.descricao.trim() || undefined,
+      areaId: areaId ?? asset?.areaId ?? undefined,
+    };
+    const onSuccess = () => { invalidate(); toast({ title: asset ? t("ativos.updatedSuccess") : t("ativos.createdSuccess") }); onOpenChange(false); };
+    const onError = () => toast({ title: t("ativos.errorSaving"), variant: "destructive" });
+    if (asset) {
+      updateAsset.mutate({ condominioId, assetId: asset.id, data }, { onSuccess, onError });
+    } else {
+      createAsset.mutate({ condominioId, data }, { onSuccess, onError });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>{asset ? t("ativos.editAsset") : t("ativos.newAsset")}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>{t("ativos.nome")} *</Label>
+            <Input value={form.nome} onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))} placeholder={t("ativos.nomePlaceholder")} autoFocus />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label>{t("ativos.tipo")}</Label>
+              <Select value={form.tipo} onValueChange={(v) => setForm(f => ({ ...f, tipo: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="equipamento">{t("ativos.tipoEquipamento")}</SelectItem>
+                  <SelectItem value="estrutura">{t("ativos.tipoEstrutura")}</SelectItem>
+                  <SelectItem value="sistema">{t("ativos.tipoSistema")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("ativos.criticidade")}</Label>
+              <Select value={form.criticidade} onValueChange={(v) => setForm(f => ({ ...f, criticidade: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baixa">{t("ativos.criticidadeBaixa")}</SelectItem>
+                  <SelectItem value="media">{t("ativos.criticidadeMedia")}</SelectItem>
+                  <SelectItem value="alta">{t("ativos.criticidadeAlta")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("ativos.status")}</Label>
+            <Select value={form.status} onValueChange={(v) => setForm(f => ({ ...f, status: v }))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="operacional">{t("ativos.statusOperacional")}</SelectItem>
+                <SelectItem value="em_manutencao">{t("ativos.statusEmManutencao")}</SelectItem>
+                <SelectItem value="inativo">{t("ativos.statusInativo")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>{t("ativos.descricao")}</Label>
+            <Textarea value={form.descricao} onChange={(e) => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder={t("ativos.descricaoPlaceholder")} rows={2} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>{t("common.cancel")}</Button>
+          <Button onClick={handleSave} disabled={!form.nome.trim() || createAsset.isPending || updateAsset.isPending}>
+            {(createAsset.isPending || updateAsset.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+            {t("common.save")}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── AssetRow ─────────────────────────────────────────────────────────────────
+
+function AssetRow({ asset, t, onEdit, onDelete }: { asset: Asset; t: (k: string) => string; onEdit: (a: Asset) => void; onDelete: (id: number) => void }) {
+  const critColors: Record<string, string> = { alta: "text-red-700 bg-red-50", media: "text-amber-700 bg-amber-50", baixa: "text-gray-600 bg-gray-50" };
+  const statusColors: Record<string, string> = { operacional: "text-green-700 bg-green-50", em_manutencao: "text-amber-700 bg-amber-50", inativo: "text-gray-500 bg-gray-100" };
+  const critLabel: Record<string, string> = { alta: t("ativos.criticidadeAlta"), media: t("ativos.criticidadeMedia"), baixa: t("ativos.criticidadeBaixa") };
+  const statusLabel: Record<string, string> = { operacional: t("ativos.statusOperacional"), em_manutencao: t("ativos.statusEmManutencao"), inativo: t("ativos.statusInativo") };
+  const tipoLabel: Record<string, string> = { equipamento: t("ativos.tipoEquipamento"), estrutura: t("ativos.tipoEstrutura"), sistema: t("ativos.tipoSistema") };
+  return (
+    <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-muted/20 border hover:border-primary/20 transition-colors">
+      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+        <span className="font-medium text-sm">{asset.nome}</span>
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${critColors[asset.criticidade]}`}>{critLabel[asset.criticidade]}</span>
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusColors[asset.status]}`}>{statusLabel[asset.status]}</span>
+        <span className="text-[10px] text-muted-foreground">{tipoLabel[asset.tipo]}</span>
+      </div>
+      <div className="flex items-center gap-1 shrink-0">
+        <button onClick={() => onEdit(asset)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={() => onDelete(asset.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+      </div>
+    </div>
+  );
+}
+
+// ─── AreasItensTab ────────────────────────────────────────────────────────────
+
+function AreasItensTab({ condominioId }: { condominioId: number }) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  // Area form state
+  const [areaForm, setAreaForm] = useState<AreaForm>(emptyAreaForm());
+  const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
+  const [areaDialogOpen, setAreaDialogOpen] = useState(false);
+  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
+  const [deleteAreaId, setDeleteAreaId] = useState<number | null>(null);
+
+  // Asset dialog state
+  const [assetDialogOpen, setAssetDialogOpen] = useState(false);
+  const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [assetDialogAreaId, setAssetDialogAreaId] = useState<number | undefined>();
+  const [deleteAssetId, setDeleteAssetId] = useState<number | null>(null);
+
+  // Accordion expanded state
+  const [expandedAreas, setExpandedAreas] = useState<Set<number>>(new Set());
+
+  const { data: areas, isPending: areasPending } = useListAreas(condominioId, { query: { queryKey: getListAreasQueryKey(condominioId) } });
+  const { data: assets, isPending: assetsPending } = useListAssets(condominioId, undefined, { query: { queryKey: getListAssetsQueryKey(condominioId) } });
+
+  const createArea = useCreateArea();
+  const updateArea = useUpdateArea();
+  const deleteArea = useDeleteArea();
+  const deleteAsset = useDeleteAsset();
+
+  const toggleArea = (id: number) => setExpandedAreas(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  const openNewArea = () => { setAreaForm(emptyAreaForm()); setEditingAreaId(null); setAreaDialogOpen(true); };
+  const openEditArea = (area: Area) => {
+    const isKnown = KNOWN_AREA_TIPOS.has(area.tipo);
+    setAreaForm({
+      nome: area.nome, tipo: isKnown ? area.tipo : "__custom__", tipoCustom: isKnown ? "" : area.tipo,
+      bloco: area.bloco || "", andar: area.andar != null ? String(area.andar) : "",
+      privacidade: (area.privacidade as AreaBodyPrivacidade) || "publica",
+      descricao: area.descricao || "", capacidade: area.capacidade?.toString() || "",
+      reservavel: area.reservavel, horarioAbertura: area.horarioAbertura || "", horarioFechamento: area.horarioFechamento || "",
+    });
+    setEditingAreaId(area.id);
+    setAreaDialogOpen(true);
+  };
+
+  const handleSaveArea = () => {
+    if (!areaForm.nome.trim()) return;
+    const effectiveTipo = areaForm.tipo === "__custom__" ? areaForm.tipoCustom.trim() : areaForm.tipo;
+    if (!effectiveTipo) return;
+    const payload = {
+      nome: areaForm.nome.trim(), tipo: effectiveTipo,
+      bloco: areaForm.bloco.trim() || undefined,
+      andar: areaForm.andar !== "" ? parseInt(areaForm.andar) : undefined,
+      privacidade: areaForm.privacidade, descricao: areaForm.descricao || undefined,
+      capacidade: areaForm.capacidade ? parseInt(areaForm.capacidade) : undefined,
+      reservavel: areaForm.reservavel,
+      horarioAbertura: areaForm.horarioAbertura || undefined, horarioFechamento: areaForm.horarioFechamento || undefined,
+    };
+    const onSuccess = () => { qc.invalidateQueries({ queryKey: getListAreasQueryKey(condominioId) }); toast({ title: editingAreaId ? t("condominios.areaUpdated") : t("condominios.areaAdded") }); setAreaDialogOpen(false); };
+    const onError = () => toast({ title: t("condominios.errorAddingArea"), variant: "destructive" });
+    if (editingAreaId) {
+      updateArea.mutate({ condominioId, areaId: editingAreaId, data: payload }, { onSuccess, onError });
+    } else {
+      createArea.mutate({ condominioId, data: payload }, { onSuccess, onError });
+    }
+  };
+
+  const handleDeleteArea = (areaId: number) => {
+    deleteArea.mutate({ condominioId, areaId }, {
+      onSuccess: () => { qc.invalidateQueries({ queryKey: getListAreasQueryKey(condominioId) }); toast({ title: t("condominios.areaRemoved") }); },
+      onError: () => toast({ title: t("condominios.errorDeletingArea"), variant: "destructive" }),
+    });
+    setDeleteAreaId(null);
+  };
+
+  const handleDeleteAsset = (assetId: number) => {
+    deleteAsset.mutate({ condominioId, assetId }, {
+      onSuccess: () => { qc.invalidateQueries({ queryKey: getListAssetsQueryKey(condominioId) }); toast({ title: t("ativos.deletedSuccess") }); },
+      onError: () => toast({ title: t("ativos.errorDeleting"), variant: "destructive" }),
+    });
+    setDeleteAssetId(null);
+  };
+
+  const openNewAsset = (areaId?: number) => { setEditingAsset(null); setAssetDialogAreaId(areaId); setAssetDialogOpen(true); };
+  const openEditAsset = (asset: Asset) => { setEditingAsset(asset); setAssetDialogAreaId(asset.areaId); setAssetDialogOpen(true); };
+
+  const allAreas = areas || [];
+  const allAssets = assets || [];
+  const unassignedAssets = allAssets.filter(a => !a.areaId);
+
+  if (areasPending || assetsPending) {
+    return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("condominios.areas")}</p>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => setCatalogDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />{t("condominios.catalogTitle")}
+          </Button>
+          <Button size="sm" variant="ghost" className="text-muted-foreground text-xs px-2" onClick={openNewArea}>
+            {t("condominios.catalogCustomArea")}
+          </Button>
+        </div>
+      </div>
+
+      {allAreas.length === 0 ? (
+        <div className="text-center py-8 border border-dashed rounded-lg">
+          <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-30" />
+          <p className="text-sm text-muted-foreground">{t("condominios.noAreas")}</p>
+          <div className="flex justify-center gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={() => setCatalogDialogOpen(true)}><Plus className="h-3.5 w-3.5 mr-1" />{t("condominios.catalogTitle")}</Button>
+            <Button size="sm" variant="ghost" className="text-muted-foreground text-xs" onClick={openNewArea}>{t("condominios.catalogCustomArea")}</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {allAreas.map(area => {
+            const areaAssets = allAssets.filter(a => a.areaId === area.id);
+            const isExpanded = expandedAreas.has(area.id);
+            return (
+              <div key={area.id} className="border rounded-lg overflow-hidden">
+                <div
+                  className="flex items-center justify-between px-3 py-2.5 bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors select-none"
+                  onClick={() => toggleArea(area.id)}
+                >
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <ChevronRight className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-150 ${isExpanded ? "rotate-90" : ""}`} />
+                    <AreaTipoBadge tipo={area.tipo} t={t} />
+                    <span className="font-medium text-sm truncate">{area.nome}</span>
+                    {area.bloco && <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded shrink-0">{area.bloco}</span>}
+                    {area.andar != null && <span className="text-xs text-muted-foreground shrink-0">{t("condominios.andarDisplay", { andar: area.andar })}</span>}
+                    <span className="text-xs text-muted-foreground shrink-0 ml-0.5">({areaAssets.length})</span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0 ml-2" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => openEditArea(area)} className="p-1 text-muted-foreground hover:text-foreground rounded"><Pencil className="h-3.5 w-3.5" /></button>
+                    <button onClick={() => setDeleteAreaId(area.id)} className="p-1 text-muted-foreground hover:text-destructive rounded"><Trash2 className="h-3.5 w-3.5" /></button>
+                  </div>
+                </div>
+                {isExpanded && (
+                  <div className="px-3 py-3 space-y-2 border-t bg-background">
+                    {areaAssets.length === 0 ? (
+                      <p className="text-xs text-muted-foreground text-center py-3">{t("condominios.areasItensNoItems")}</p>
+                    ) : (
+                      <div className="space-y-1.5">
+                        {areaAssets.map(a => <AssetRow key={a.id} asset={a} t={t} onEdit={openEditAsset} onDelete={setDeleteAssetId} />)}
+                      </div>
+                    )}
+                    <Button size="sm" variant="outline" className="w-full mt-1 text-xs h-8" onClick={() => openNewAsset(area.id)}>
+                      <Plus className="h-3.5 w-3.5 mr-1" />{t("condominios.areasItensAddItem")}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Unassigned items section */}
+      {(unassignedAssets.length > 0 || allAreas.length > 0) && (
+        <div className="space-y-2 pt-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <Package className="h-3.5 w-3.5" />{t("condominios.areasItensSemArea")}
+            <span className="font-normal">({unassignedAssets.length})</span>
+          </p>
+          {unassignedAssets.length > 0 && (
+            <div className="space-y-1.5">
+              {unassignedAssets.map(a => <AssetRow key={a.id} asset={a} t={t} onEdit={openEditAsset} onDelete={setDeleteAssetId} />)}
+            </div>
+          )}
+          <Button size="sm" variant="outline" className="w-full text-xs h-8" onClick={() => openNewAsset(undefined)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />{t("condominios.areasItensAddItem")}
+          </Button>
+        </div>
+      )}
+
+      {/* Area Dialog (reuses same form as AreasPanel) */}
+      <Dialog open={areaDialogOpen} onOpenChange={setAreaDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>{editingAreaId ? t("condominios.editAreaDialog") : t("condominios.addAreaDialog")}</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>{t("condominios.areaName")} *</Label>
+                <Input value={areaForm.nome} onChange={(e) => setAreaForm(f => ({ ...f, nome: e.target.value }))} placeholder={t("condominios.areaNamePlaceholder")} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("condominios.areaType")} *</Label>
+                <Select value={areaForm.tipo} onValueChange={(v) => setAreaForm(f => ({ ...f, tipo: v, tipoCustom: "" }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {AREA_TIPOS.map(tipo => <SelectItem key={tipo} value={tipo}>{t(`condominios.tipo${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`)}</SelectItem>)}
+                    <SelectItem value="__custom__">{t("condominios.tipoCustom")}</SelectItem>
+                  </SelectContent>
+                </Select>
+                {areaForm.tipo === "__custom__" && <Input className="mt-1" value={areaForm.tipoCustom} onChange={(e) => setAreaForm(f => ({ ...f, tipoCustom: e.target.value }))} placeholder={t("condominios.tipoCustomPlaceholder")} />}
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2 col-span-2">
+                <Label>{t("condominios.areaBloco")}</Label>
+                <Input value={areaForm.bloco} onChange={(e) => setAreaForm(f => ({ ...f, bloco: e.target.value }))} placeholder={t("condominios.areaBlocoPlaceholder")} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("condominios.areaAndar")}</Label>
+                <Input type="number" value={areaForm.andar} onChange={(e) => setAreaForm(f => ({ ...f, andar: e.target.value }))} placeholder={t("condominios.areaAndarPlaceholder")} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("condominios.areaPrivacidade")}</Label>
+              <Select value={areaForm.privacidade} onValueChange={(v) => setAreaForm(f => ({ ...f, privacidade: v as AreaBodyPrivacidade }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="publica">{t("condominios.privacidadePublica")}</SelectItem>
+                  <SelectItem value="privada">{t("condominios.privacidadePrivada")}</SelectItem>
+                  <SelectItem value="mista">{t("condominios.privacidadeMista")}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("condominios.areaDescricao")}</Label>
+              <Textarea value={areaForm.descricao} onChange={(e) => setAreaForm(f => ({ ...f, descricao: e.target.value }))} placeholder={t("condominios.areaDescricaoPlaceholder")} rows={2} />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>{t("condominios.areaCapacidade")}</Label>
+                <Input type="number" min="0" value={areaForm.capacidade} onChange={(e) => setAreaForm(f => ({ ...f, capacidade: e.target.value }))} placeholder="50" />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("condominios.areaHorarioAbertura")}</Label>
+                <Input type="time" value={areaForm.horarioAbertura} onChange={(e) => setAreaForm(f => ({ ...f, horarioAbertura: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("condominios.areaHorarioFechamento")}</Label>
+                <Input type="time" value={areaForm.horarioFechamento} onChange={(e) => setAreaForm(f => ({ ...f, horarioFechamento: e.target.value }))} />
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={areaForm.reservavel} onCheckedChange={(v) => setAreaForm(f => ({ ...f, reservavel: v }))} id="ai-tab-area-reservavel" />
+              <Label htmlFor="ai-tab-area-reservavel">{t("condominios.areaReservavel")}</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAreaDialogOpen(false)}>{t("common.cancel")}</Button>
+            <Button onClick={handleSaveArea} disabled={!areaForm.nome.trim() || createArea.isPending || updateArea.isPending}>
+              {(createArea.isPending || updateArea.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+              {t("common.save")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Asset sub-dialog */}
+      <AssetDialog condominioId={condominioId} areaId={assetDialogAreaId} asset={editingAsset} open={assetDialogOpen} onOpenChange={setAssetDialogOpen} />
+
+      {/* Catalog dialog */}
+      <CatalogDialog condominioId={condominioId} open={catalogDialogOpen} onOpenChange={setCatalogDialogOpen}
+        onDone={() => qc.invalidateQueries({ queryKey: getListAreasQueryKey(condominioId) })} onOpenCustomArea={openNewArea} />
+
+      {/* Delete Area Confirmation */}
+      <AlertDialog open={deleteAreaId !== null} onOpenChange={(o) => { if (!o) setDeleteAreaId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("condominios.deleteAreaConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("condominios.deleteAreaWarning")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteAreaId !== null && handleDeleteArea(deleteAreaId)} className="bg-destructive hover:bg-destructive/90">{t("common.delete")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Asset Confirmation */}
+      <AlertDialog open={deleteAssetId !== null} onOpenChange={(o) => { if (!o) setDeleteAssetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("ativos.deleteConfirm")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("ativos.deleteWarning")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteAssetId !== null && handleDeleteAsset(deleteAssetId)} className="bg-destructive hover:bg-destructive/90">{t("common.delete")}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ─── AssetSummaryBadges ───────────────────────────────────────────────────────
+
+function AssetSummaryBadges({ condominioId }: { condominioId: number }) {
+  const { t } = useTranslation();
+  const { data: assets } = useListAssets(condominioId, undefined, { query: { queryKey: getListAssetsQueryKey(condominioId) } });
+  if (!assets || assets.length === 0) return null;
+  const critical = assets.filter(a => a.criticidade === "alta").length;
+  const manutencao = assets.filter(a => a.status === "em_manutencao").length;
+  const inativo = assets.filter(a => a.status === "inativo").length;
+  if (critical === 0 && manutencao === 0 && inativo === 0) return null;
+  return (
+    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+      {critical > 0 && (
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-red-700 bg-red-50 flex items-center gap-0.5">
+          <AlertTriangle className="h-2.5 w-2.5" />{t("condominios.areasItensCardCritical", { count: critical })}
+        </span>
+      )}
+      {manutencao > 0 && (
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-amber-700 bg-amber-50 flex items-center gap-0.5">
+          <Wrench className="h-2.5 w-2.5" />{t("condominios.areasItensCardManutencao", { count: manutencao })}
+        </span>
+      )}
+      {inativo > 0 && (
+        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full text-gray-500 bg-gray-100">
+          {t("condominios.areasItensCardInativo", { count: inativo })}
+        </span>
+      )}
     </div>
   );
 }
@@ -1089,7 +1563,6 @@ function HealthIndicator({ condominioId }: { condominioId: number }) {
 
 function CondominioCard({ condo, onEdit }: { condo: Condominio; onEdit: (c: Condominio) => void }) {
   const { t } = useTranslation();
-  const [showAreas, setShowAreas] = useState(false);
   const tipoLabel: Record<string, string> = {
     residencial: t("condominios.tipoResidencial"),
     comercial: t("condominios.tipoComercial"),
@@ -1119,22 +1592,15 @@ function CondominioCard({ condo, onEdit }: { condo: Condominio; onEdit: (c: Cond
               {condo.sindico && <span className="flex items-center gap-1"><Shield className="h-3 w-3" />{condo.sindico}</span>}
               {condo.cnpj && <span className="font-mono">{condo.cnpj}</span>}
             </div>
+            <AssetSummaryBadges condominioId={condo.id} />
             <HealthIndicator condominioId={condo.id} />
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(condo)}>
               <Pencil className="h-3.5 w-3.5" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => setShowAreas(!showAreas)}>
-              {showAreas ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
           </div>
         </div>
-        {showAreas && (
-          <div className="mt-4 border-t pt-4">
-            <AreasPanel condominioId={condo.id} />
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -1297,6 +1763,7 @@ export default function CondominiosPage() {
                   [
                     { value: "geral", label: t("condominios.tabGeral") },
                     { value: "equipe", label: t("condominios.tabEquipe") },
+                    { value: "areas-itens", label: t("condominios.tabAreasItens"), disabled: !editingId },
                     { value: "contratos", label: t("condominios.tabContratos"), disabled: !editingId },
                     { value: "prestadores", label: t("condominios.tabPrestadores"), disabled: !editingId },
                     { value: "documentos", label: t("condominios.tabDocumentos"), disabled: !editingId },
@@ -1541,6 +2008,11 @@ export default function CondominiosPage() {
                     </div>
                   </div>
                 </div>
+              </TabsContent>
+
+              {/* ── Áreas & Itens Tab ── */}
+              <TabsContent value="areas-itens" className="p-6 m-0">
+                {editingId ? <AreasItensTab condominioId={editingId} /> : <SaveFirstMessage t={t} />}
               </TabsContent>
 
               {/* ── Sub-entity Tabs ── */}
