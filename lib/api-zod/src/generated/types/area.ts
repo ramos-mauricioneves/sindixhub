@@ -6,13 +6,12 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { AreaPrivacidade } from "./areaPrivacidade";
-import type { AreaTipo } from "./areaTipo";
 
 export interface Area {
   id: number;
   condominioId: number;
   nome: string;
-  tipo: AreaTipo;
+  tipo: string;
   bloco?: string | null;
   andar?: number | null;
   privacidade: AreaPrivacidade;

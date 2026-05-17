@@ -1127,7 +1127,6 @@ components:
           type: string
         tipo:
           type: string
-          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa, manutencao, circulacao]
         bloco:
           type: string
           nullable: true
@@ -1173,7 +1172,6 @@ components:
           type: string
         tipo:
           type: string
-          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa, manutencao, circulacao]
         bloco:
           type: string
         andar:

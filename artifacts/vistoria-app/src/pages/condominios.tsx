@@ -7,9 +7,10 @@ import {
 import {
   useListCondominios, useCreateCondominio, useUpdateCondominio,
   useListAreas, useCreateArea, useUpdateArea, useDeleteArea,
-  Condominio, Area, AreaBodyPrivacidade, AreaBodyTipo, AreaPrivacidade,
+  Condominio, Area, AreaBodyPrivacidade, AreaPrivacidade,
   getListCondominiosQueryKey, getListAreasQueryKey,
 } from "@workspace/api-client-react";
+import { AREA_CATEGORIES, AreaTemplate, KNOWN_AREA_TIPOS } from "@/lib/area-templates";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -62,16 +63,23 @@ const emptyForm = (): CondominioForm => ({
 });
 
 type AreaForm = {
-  nome: string; tipo: AreaBodyTipo; bloco: string; andar: string; privacidade: AreaBodyPrivacidade;
+  nome: string; tipo: string; tipoCustom: string; bloco: string; andar: string;
+  privacidade: AreaBodyPrivacidade;
   descricao: string; capacidade: string; reservavel: boolean;
   horarioAbertura: string; horarioFechamento: string;
 };
 
 const emptyAreaForm = (): AreaForm => ({
-  nome: "", tipo: "comum", bloco: "", andar: "", privacidade: "publica",
+  nome: "", tipo: "comum", tipoCustom: "", bloco: "", andar: "", privacidade: "publica",
   descricao: "", capacidade: "", reservavel: false,
   horarioAbertura: "", horarioFechamento: "",
 });
+
+type PendingArea = {
+  id: string; nome: string; tipo: string;
+  privacidade: "publica" | "privada" | "mista";
+  bloco: string; andar: string;
+};
 
 function AreaTipoBadge({ tipo, t }: { tipo: string; t: (k: string) => string }) {
   const colors = AREA_TIPO_COLORS[tipo] || "text-gray-600 bg-gray-50";
@@ -109,6 +117,166 @@ function PrivacidadeBadge({ privacidade, t }: { privacidade: string; t: (k: stri
   );
 }
 
+function CatalogDialog({
+  condominioId, open, onOpenChange, onDone, onOpenCustomArea,
+}: {
+  condominioId: number;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onDone: () => void;
+  onOpenCustomArea: () => void;
+}) {
+  const { t } = useTranslation();
+  const { toast } = useToast();
+  const [activeCategory, setActiveCategory] = useState(AREA_CATEGORIES[0].key);
+  const [pending, setPending] = useState<PendingArea[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const createArea = useCreateArea();
+  const qc = useQueryClient();
+
+  const currentCategory = AREA_CATEGORIES.find(c => c.key === activeCategory) ?? AREA_CATEGORIES[0];
+  const categoryLabel = (key: string) =>
+    t(`condominios.catalog${key.charAt(0).toUpperCase() + key.slice(1)}`);
+
+  const toggleTemplate = (template: AreaTemplate) => {
+    const uid = `${template.tipo}__${template.nome}`;
+    const exists = pending.some(p => p.id === uid);
+    if (exists) {
+      setPending(p => p.filter(x => x.id !== uid));
+    } else {
+      setPending(p => [...p, {
+        id: uid, nome: template.nome, tipo: template.tipo,
+        privacidade: template.privacidade, bloco: "", andar: "",
+      }]);
+    }
+  };
+
+  const handleSave = async () => {
+    if (pending.length === 0) return;
+    setIsSaving(true);
+    try {
+      await Promise.all(pending.map(area =>
+        createArea.mutateAsync({
+          condominioId,
+          data: {
+            nome: area.nome.trim() || area.nome,
+            tipo: area.tipo,
+            privacidade: area.privacidade as AreaBodyPrivacidade,
+            bloco: area.bloco.trim() || undefined,
+            andar: area.andar ? parseInt(area.andar) : undefined,
+          },
+        })
+      ));
+      qc.invalidateQueries({ queryKey: getListAreasQueryKey(condominioId) });
+      toast({ title: t("condominios.catalogBatchAdded", { count: pending.length }) });
+      onDone();
+      onOpenChange(false);
+      setPending([]);
+    } catch {
+      toast({ title: t("condominios.errorAddingArea"), variant: "destructive" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleClose = () => { onOpenChange(false); setPending([]); };
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col gap-4">
+        <DialogHeader>
+          <DialogTitle>{t("condominios.catalogTitle")}</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex flex-wrap gap-1.5 pb-2 border-b">
+          {AREA_CATEGORIES.map(cat => (
+            <button
+              key={cat.key}
+              onClick={() => setActiveCategory(cat.key)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                activeCategory === cat.key
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/60"
+              }`}
+            >
+              {categoryLabel(cat.key)}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-2 gap-2 overflow-y-auto max-h-44">
+          {currentCategory.templates.map(template => {
+            const uid = `${template.tipo}__${template.nome}`;
+            const isSelected = pending.some(p => p.id === uid);
+            return (
+              <button
+                key={template.nome}
+                onClick={() => toggleTemplate(template)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg border text-left text-sm transition-colors ${
+                  isSelected
+                    ? "border-primary bg-primary/10 text-primary font-medium"
+                    : "border-border bg-background hover:bg-muted"
+                }`}
+              >
+                {isSelected
+                  ? <Check className="h-3.5 w-3.5 shrink-0" />
+                  : <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
+                <span className="truncate">{template.nome}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {pending.length > 0 && (
+          <div className="border-t pt-3 space-y-2 overflow-y-auto max-h-48">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+              {t("condominios.catalogSelected", { count: pending.length })}
+            </p>
+            {pending.map((area, idx) => (
+              <div key={area.id} className="flex items-center gap-2">
+                <input
+                  className="flex-1 min-w-0 text-sm px-2 py-1.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={area.nome}
+                  aria-label={t("condominios.catalogNameLabel")}
+                  onChange={(e) => setPending(p => p.map((x, i) => i === idx ? { ...x, nome: e.target.value } : x))}
+                />
+                <input
+                  className="w-24 text-xs px-2 py-1.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  placeholder={t("condominios.catalogBlocoLabel")}
+                  value={area.bloco}
+                  onChange={(e) => setPending(p => p.map((x, i) => i === idx ? { ...x, bloco: e.target.value } : x))}
+                />
+                <input
+                  className="w-14 text-xs px-2 py-1.5 rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+                  type="number"
+                  placeholder={t("condominios.catalogAndarLabel")}
+                  value={area.andar}
+                  onChange={(e) => setPending(p => p.map((x, i) => i === idx ? { ...x, andar: e.target.value } : x))}
+                />
+                <button onClick={() => setPending(p => p.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive shrink-0">
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 border-t pt-2">
+          <Button variant="ghost" size="sm" className="mr-auto text-muted-foreground text-xs" onClick={() => { handleClose(); setTimeout(onOpenCustomArea, 50); }}>
+            <Plus className="h-3 w-3 mr-1" />
+            {t("condominios.catalogCustomArea")}
+          </Button>
+          <Button variant="outline" onClick={handleClose}>{t("common.cancel")}</Button>
+          <Button disabled={pending.length === 0 || isSaving} onClick={handleSave}>
+            {isSaving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+            {t("condominios.catalogAddBatch", { count: pending.length })}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function AreasPanel({ condominioId }: { condominioId: number }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -116,6 +284,7 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
   const [areaForm, setAreaForm] = useState<AreaForm>(emptyAreaForm());
   const [editingAreaId, setEditingAreaId] = useState<number | null>(null);
   const [areaDialogOpen, setAreaDialogOpen] = useState(false);
+  const [catalogDialogOpen, setCatalogDialogOpen] = useState(false);
 
   const { data: areas, isPending } = useListAreas(condominioId, {
     query: { queryKey: getListAreasQueryKey(condominioId) }
@@ -131,9 +300,11 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
   };
 
   const openEditArea = (area: Area) => {
+    const isKnown = KNOWN_AREA_TIPOS.has(area.tipo);
     setAreaForm({
       nome: area.nome,
-      tipo: (area.tipo as AreaBodyTipo) || "comum",
+      tipo: isKnown ? area.tipo : "__custom__",
+      tipoCustom: isKnown ? "" : area.tipo,
       bloco: area.bloco || "",
       andar: area.andar != null ? String(area.andar) : "",
       privacidade: (area.privacidade as AreaBodyPrivacidade) || "publica",
@@ -149,9 +320,11 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
 
   const handleSaveArea = () => {
     if (!areaForm.nome.trim()) return;
+    const effectiveTipo = areaForm.tipo === "__custom__" ? areaForm.tipoCustom.trim() : areaForm.tipo;
+    if (!effectiveTipo) return;
     const payload = {
       nome: areaForm.nome.trim(),
-      tipo: areaForm.tipo,
+      tipo: effectiveTipo,
       bloco: areaForm.bloco.trim() || undefined,
       andar: areaForm.andar !== "" ? parseInt(areaForm.andar) : undefined,
       privacidade: areaForm.privacidade,
@@ -200,16 +373,25 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
     return a.localeCompare(b);
   });
 
-  const tipoOrder = AREA_TIPOS as readonly string[];
+  const knownTipoOrder = AREA_TIPOS as readonly string[];
+  const customTipos = (areas || [])
+    .map(a => a.tipo)
+    .filter(t => !KNOWN_AREA_TIPOS.has(t));
+  const tipoOrder = [...knownTipoOrder, ...new Set(customTipos)];
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{t("condominios.areas")}</p>
-        <Button size="sm" variant="outline" onClick={openNewArea}>
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          {t("condominios.addArea")}
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="outline" onClick={() => setCatalogDialogOpen(true)}>
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            {t("condominios.catalogTitle")}
+          </Button>
+          <Button size="sm" variant="ghost" className="text-muted-foreground text-xs px-2" onClick={openNewArea}>
+            {t("condominios.catalogCustomArea")}
+          </Button>
+        </div>
       </div>
 
       {isPending ? (
@@ -218,9 +400,15 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
         <div className="text-center py-8 border border-dashed rounded-lg">
           <MapPin className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-30" />
           <p className="text-sm text-muted-foreground">{t("condominios.noAreas")}</p>
-          <Button size="sm" variant="outline" className="mt-3" onClick={openNewArea}>
-            {t("condominios.addArea")}
-          </Button>
+          <div className="flex justify-center gap-2 mt-3">
+            <Button size="sm" variant="outline" onClick={() => setCatalogDialogOpen(true)}>
+              <Plus className="h-3.5 w-3.5 mr-1" />
+              {t("condominios.catalogTitle")}
+            </Button>
+            <Button size="sm" variant="ghost" className="text-muted-foreground text-xs" onClick={openNewArea}>
+              {t("condominios.catalogCustomArea")}
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="space-y-5">
@@ -325,7 +513,7 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
               </div>
               <div className="space-y-2">
                 <Label>{t("condominios.areaType")} *</Label>
-                <Select value={areaForm.tipo} onValueChange={(v) => setAreaForm(f => ({ ...f, tipo: v as AreaBodyTipo }))}>
+                <Select value={areaForm.tipo} onValueChange={(v) => setAreaForm(f => ({ ...f, tipo: v, tipoCustom: "" }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {AREA_TIPOS.map(tipo => (
@@ -333,8 +521,17 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
                         {t(`condominios.tipo${tipo.charAt(0).toUpperCase() + tipo.slice(1)}`)}
                       </SelectItem>
                     ))}
+                    <SelectItem value="__custom__">{t("condominios.tipoCustom")}</SelectItem>
                   </SelectContent>
                 </Select>
+                {areaForm.tipo === "__custom__" && (
+                  <Input
+                    className="mt-1"
+                    value={areaForm.tipoCustom}
+                    onChange={(e) => setAreaForm(f => ({ ...f, tipoCustom: e.target.value }))}
+                    placeholder={t("condominios.tipoCustomPlaceholder")}
+                  />
+                )}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
@@ -421,6 +618,14 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CatalogDialog
+        condominioId={condominioId}
+        open={catalogDialogOpen}
+        onOpenChange={setCatalogDialogOpen}
+        onDone={() => qc.invalidateQueries({ queryKey: getListAreasQueryKey(condominioId) })}
+        onOpenCustomArea={openNewArea}
+      />
     </div>
   );
 }

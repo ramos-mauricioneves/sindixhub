@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { AreaBodyPrivacidade } from "./areaBodyPrivacidade";
-import type { AreaBodyTipo } from "./areaBodyTipo";
 
 export interface AreaBody {
   nome: string;
-  tipo: AreaBodyTipo;
+  tipo: string;
   bloco?: string;
   andar?: number;
   privacidade?: AreaBodyPrivacidade;

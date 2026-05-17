@@ -280,22 +280,6 @@ export interface CondominioBody {
   ativo?: boolean;
 }
 
-export type AreaTipo = (typeof AreaTipo)[keyof typeof AreaTipo];
-
-export const AreaTipo = {
-  comum: "comum",
-  lazer: "lazer",
-  esportiva: "esportiva",
-  social: "social",
-  servico: "servico",
-  estacionamento: "estacionamento",
-  infantil: "infantil",
-  predial: "predial",
-  administrativa: "administrativa",
-  manutencao: "manutencao",
-  circulacao: "circulacao",
-} as const;
-
 export type AreaPrivacidade =
   (typeof AreaPrivacidade)[keyof typeof AreaPrivacidade];
 
@@ -309,7 +293,7 @@ export interface Area {
   id: number;
   condominioId: number;
   nome: string;
-  tipo: AreaTipo;
+  tipo: string;
   bloco?: string | null;
   andar?: number | null;
   privacidade: AreaPrivacidade;
@@ -322,22 +306,6 @@ export interface Area {
   createdAt: string;
 }
 
-export type AreaBodyTipo = (typeof AreaBodyTipo)[keyof typeof AreaBodyTipo];
-
-export const AreaBodyTipo = {
-  comum: "comum",
-  lazer: "lazer",
-  esportiva: "esportiva",
-  social: "social",
-  servico: "servico",
-  estacionamento: "estacionamento",
-  infantil: "infantil",
-  predial: "predial",
-  administrativa: "administrativa",
-  manutencao: "manutencao",
-  circulacao: "circulacao",
-} as const;
-
 export type AreaBodyPrivacidade =
   (typeof AreaBodyPrivacidade)[keyof typeof AreaBodyPrivacidade];
 
@@ -349,7 +317,7 @@ export const AreaBodyPrivacidade = {
 
 export interface AreaBody {
   nome: string;
-  tipo: AreaBodyTipo;
+  tipo: string;
   bloco?: string;
   andar?: number;
   privacidade?: AreaBodyPrivacidade;
