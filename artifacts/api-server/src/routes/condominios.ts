@@ -297,6 +297,8 @@ router.get("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
     res.status(400).json({ error: "ID inválido" });
     return;
   }
+  const user = await authorizeCondominioAccess(req, res, id);
+  if (!user) return;
   const [condo] = await db.select().from(condominiosTable).where(eq(condominiosTable.id, id));
   if (!condo) {
     res.status(404).json({ error: "Condomínio não encontrado" });
@@ -376,6 +378,8 @@ router.get("/condominios/:condominioId/areas", requireAuth, async (req, res): Pr
     res.status(400).json({ error: "ID inválido" });
     return;
   }
+  const user = await authorizeCondominioAccess(req, res, condominioId);
+  if (!user) return;
   const rows = await db
     .select()
     .from(areasTable)
