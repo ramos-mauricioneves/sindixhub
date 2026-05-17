@@ -220,6 +220,7 @@ export default {
     areaBlocoPlaceholder: "e.g. A, Tower 1, North",
     areaAndar: "Floor",
     areaAndarPlaceholder: "e.g. 1, -1 (basement)",
+    andarDisplay: "Floor {{andar}}",
     areaPrivacidade: "Privacy",
     privacidadePublica: "Public",
     privacidadePrivada: "Private",

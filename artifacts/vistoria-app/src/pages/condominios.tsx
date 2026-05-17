@@ -7,7 +7,7 @@ import {
 import {
   useListCondominios, useCreateCondominio, useUpdateCondominio,
   useListAreas, useCreateArea, useUpdateArea, useDeleteArea,
-  Condominio, Area, AreaBodyPrivacidade, AreaBodyTipo,
+  Condominio, Area, AreaBodyPrivacidade, AreaBodyTipo, AreaPrivacidade,
   getListCondominiosQueryKey, getListAreasQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -134,9 +134,9 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
     setAreaForm({
       nome: area.nome,
       tipo: (area.tipo as AreaBodyTipo) || "comum",
-      bloco: (area as any).bloco || "",
-      andar: (area as any).andar != null ? String((area as any).andar) : "",
-      privacidade: ((area as any).privacidade || "publica") as AreaBodyPrivacidade,
+      bloco: area.bloco || "",
+      andar: area.andar != null ? String(area.andar) : "",
+      privacidade: (area.privacidade as AreaBodyPrivacidade) || "publica",
       descricao: area.descricao || "",
       capacidade: area.capacidade?.toString() || "",
       reservavel: area.reservavel,
@@ -185,18 +185,22 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
     });
   };
 
-  const groupedByBloco = (areas || []).reduce<Record<string, Area[]>>((acc, area) => {
-    const bloco = (area as any).bloco || "__sem_bloco__";
-    if (!acc[bloco]) acc[bloco] = [];
-    acc[bloco].push(area);
+  const groupedByBlocoAndTipo = (areas || []).reduce<Record<string, Record<string, Area[]>>>((acc, area) => {
+    const bloco = area.bloco || "__sem_bloco__";
+    const tipo = area.tipo;
+    if (!acc[bloco]) acc[bloco] = {};
+    if (!acc[bloco][tipo]) acc[bloco][tipo] = [];
+    acc[bloco][tipo].push(area);
     return acc;
   }, {});
 
-  const blocoKeys = Object.keys(groupedByBloco).sort((a, b) => {
+  const blocoKeys = Object.keys(groupedByBlocoAndTipo).sort((a, b) => {
     if (a === "__sem_bloco__") return 1;
     if (b === "__sem_bloco__") return -1;
     return a.localeCompare(b);
   });
+
+  const tipoOrder = AREA_TIPOS as readonly string[];
 
   return (
     <div className="space-y-4">
@@ -220,7 +224,11 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
         </div>
       ) : (
         <div className="space-y-5">
-          {blocoKeys.map(blocoKey => (
+          {blocoKeys.map(blocoKey => {
+            const tipoMap = groupedByBlocoAndTipo[blocoKey];
+            const orderedTipos = tipoOrder.filter(t => tipoMap[t]?.length);
+            const totalInBloco = orderedTipos.reduce((s, t) => s + tipoMap[t].length, 0);
+            return (
             <div key={blocoKey}>
               <div className="flex items-center gap-2 mb-2">
                 {blocoKey !== "__sem_bloco__" ? (
@@ -230,19 +238,25 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
                 ) : (
                   <span className="text-xs text-muted-foreground font-medium">{t("condominios.semBloco")}</span>
                 )}
-                <span className="text-xs text-muted-foreground">({groupedByBloco[blocoKey].length})</span>
+                <span className="text-xs text-muted-foreground">({totalInBloco})</span>
               </div>
-              <div className="grid gap-2">
-                {groupedByBloco[blocoKey].map((area) => (
-                  <div key={area.id} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2 border">
+              <div className="space-y-3">
+                {orderedTipos.map(tipo => (
+                  <div key={tipo}>
+                    <div className="flex items-center gap-1.5 mb-1.5 ml-1">
+                      <AreaTipoBadge tipo={tipo} t={t} />
+                      <span className="text-xs text-muted-foreground">({tipoMap[tipo].length})</span>
+                    </div>
+                    <div className="grid gap-2">
+                      {tipoMap[tipo].map((area) => (
+                  <div key={area.id} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2 border ml-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm">{area.nome}</span>
-                        <AreaTipoBadge tipo={area.tipo} t={t} />
-                        <PrivacidadeBadge privacidade={(area as any).privacidade || "publica"} t={t} />
-                        {(area as any).andar != null && (
+                        <PrivacidadeBadge privacidade={area.privacidade as AreaPrivacidade} t={t} />
+                        {area.andar != null && (
                           <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                            {(area as any).andar}º andar
+                            {t("condominios.andarDisplay", { andar: area.andar })}
                           </span>
                         )}
                         {area.reservavel && (
@@ -281,10 +295,14 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
                       </button>
                     </div>
                   </div>
+                      ))}
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       )}
 
