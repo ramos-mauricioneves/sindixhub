@@ -13,7 +13,7 @@ import {
   useListDocumentos, useCreateDocumento, useUpdateDocumento, useDeleteDocumento,
   useGetSeguroPredial, useUpsertSeguroPredial,
   useGetCondominioHealth,
-  Condominio, Area, AreaBodyPrivacidade, AreaPrivacidade,
+  Condominio, CondominioBody, Area, AreaBodyPrivacidade, AreaPrivacidade,
   ContratoCondominio, PrestadorCondominio, DocumentoCondominio,
   getListCondominiosQueryKey, getListAreasQueryKey,
   getListContratosQueryKey, getListPrestadoresQueryKey,
@@ -1167,7 +1167,7 @@ export default function CondominiosPage() {
   const openNew = () => { setForm(emptyForm()); setEditingId(null); setActiveTab("geral"); setDialogOpen(true); };
 
   const openEdit = (c: Condominio) => {
-    const eq = c.equipe as any;
+    const eq = c.equipe;
     setForm({
       nome: c.nome, cnpj: c.cnpj ?? "", tipoCondominio: c.tipoCondominio ?? "residencial",
       endereco: c.endereco ?? "", cep: c.cep ?? "", bairro: c.bairro ?? "", cidade: c.cidade ?? "", estado: c.estado ?? "",
@@ -1175,11 +1175,11 @@ export default function CondominiosPage() {
       totalAndares: c.totalAndares?.toString() ?? "", anoConstrucao: c.anoConstrucao?.toString() ?? "",
       telefone: c.telefone ?? "", email: c.email ?? "", sindico: c.sindico ?? "",
       zelador: c.zelador ?? "", administradora: c.administradora ?? "",
-      inscricaoMunicipal: (c as any).inscricaoMunicipal ?? "",
-      areaTotalM2: (c as any).areaTotalM2?.toString() ?? "",
-      areaLazerM2: (c as any).areaLazerM2?.toString() ?? "",
-      numElevadores: (c as any).numElevadores?.toString() ?? "",
-      tipoPortaria: (c as any).tipoPortaria ?? "",
+      inscricaoMunicipal: c.inscricaoMunicipal ?? "",
+      areaTotalM2: c.areaTotalM2?.toString() ?? "",
+      areaLazerM2: c.areaLazerM2?.toString() ?? "",
+      numElevadores: c.numElevadores?.toString() ?? "",
+      tipoPortaria: c.tipoPortaria ?? "",
       equipeSubSindicoNome: eq?.subSindico?.nome ?? "",
       equipeSubSindicoTelefone: eq?.subSindico?.telefone ?? "",
       equipeSubSindicoEmail: eq?.subSindico?.email ?? "",
@@ -1202,16 +1202,24 @@ export default function CondominiosPage() {
 
   const handleSave = () => {
     if (!form.nome.trim()) return;
-    const payload: Record<string, unknown> = {
-      nome: form.nome.trim(), cnpj: form.cnpj || undefined, tipoCondominio: form.tipoCondominio,
-      endereco: form.endereco || undefined, cep: form.cep || undefined, bairro: form.bairro || undefined,
-      cidade: form.cidade || undefined, estado: form.estado || undefined,
+    const payload: CondominioBody = {
+      nome: form.nome.trim(),
+      cnpj: form.cnpj || undefined,
+      tipoCondominio: (form.tipoCondominio as CondominioBody["tipoCondominio"]) || undefined,
+      endereco: form.endereco || undefined,
+      cep: form.cep || undefined,
+      bairro: form.bairro || undefined,
+      cidade: form.cidade || undefined,
+      estado: form.estado || undefined,
       totalUnidades: form.totalUnidades ? parseInt(form.totalUnidades) : undefined,
       totalBlocos: form.totalBlocos ? parseInt(form.totalBlocos) : undefined,
       totalAndares: form.totalAndares ? parseInt(form.totalAndares) : undefined,
       anoConstrucao: form.anoConstrucao ? parseInt(form.anoConstrucao) : undefined,
-      telefone: form.telefone || undefined, email: form.email || undefined, sindico: form.sindico || undefined,
-      zelador: form.zelador || undefined, administradora: form.administradora || undefined,
+      telefone: form.telefone || undefined,
+      email: form.email || undefined,
+      sindico: form.sindico || undefined,
+      zelador: form.zelador || undefined,
+      administradora: form.administradora || undefined,
       inscricaoMunicipal: form.inscricaoMunicipal || undefined,
       areaTotalM2: form.areaTotalM2 ? parseFloat(form.areaTotalM2) : undefined,
       areaLazerM2: form.areaLazerM2 ? parseFloat(form.areaLazerM2) : undefined,
@@ -1223,13 +1231,13 @@ export default function CondominiosPage() {
     const onSuccess = () => { qc.invalidateQueries({ queryKey: getListCondominiosQueryKey() }); toast({ title: t("condominios.savedSuccess") }); setDialogOpen(false); };
     const onError = () => toast({ title: t("condominios.errorSaving"), variant: "destructive" });
     if (editingId) {
-      updateCondominio.mutate({ id: editingId, data: payload as any }, { onSuccess, onError });
+      updateCondominio.mutate({ id: editingId, data: payload }, { onSuccess, onError });
     } else {
-      createCondominio.mutate({ data: payload as any }, {
-        onSuccess: (data) => {
+      createCondominio.mutate({ data: payload }, {
+        onSuccess: (data: Condominio) => {
           qc.invalidateQueries({ queryKey: getListCondominiosQueryKey() });
           toast({ title: t("condominios.savedSuccess") });
-          setEditingId((data as any).id);
+          setEditingId(data.id);
           setActiveTab("equipe");
         },
         onError,
@@ -1282,15 +1290,17 @@ export default function CondominiosPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <div className="flex-shrink-0 border-b bg-background px-4 pt-2">
               <TabsList className="h-auto p-0 bg-transparent gap-0 flex-wrap">
-                {[
-                  { value: "geral", label: t("condominios.tabGeral") },
-                  { value: "equipe", label: t("condominios.tabEquipe") },
-                  { value: "contratos", label: t("condominios.tabContratos"), disabled: !editingId },
-                  { value: "prestadores", label: t("condominios.tabPrestadores"), disabled: !editingId },
-                  { value: "documentos", label: t("condominios.tabDocumentos"), disabled: !editingId },
-                  { value: "seguro", label: t("condominios.tabSeguro"), disabled: !editingId },
-                ].map(tab => (
-                  <TabsTrigger key={tab.value} value={tab.value} disabled={(tab as any).disabled}
+                {(
+                  [
+                    { value: "geral", label: t("condominios.tabGeral") },
+                    { value: "equipe", label: t("condominios.tabEquipe") },
+                    { value: "contratos", label: t("condominios.tabContratos"), disabled: !editingId },
+                    { value: "prestadores", label: t("condominios.tabPrestadores"), disabled: !editingId },
+                    { value: "documentos", label: t("condominios.tabDocumentos"), disabled: !editingId },
+                    { value: "seguro", label: t("condominios.tabSeguro"), disabled: !editingId },
+                  ] as Array<{ value: string; label: string; disabled?: boolean }>
+                ).map(tab => (
+                  <TabsTrigger key={tab.value} value={tab.value} disabled={tab.disabled}
                     className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 pb-2 text-sm">
                     {tab.label}
                   </TabsTrigger>

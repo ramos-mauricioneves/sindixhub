@@ -236,7 +236,12 @@ router.get("/condominios", requireAuth, async (req, res): Promise<void> => {
   res.json(rows.map(formatCondo));
 });
 
-router.post("/condominios", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
+router.post("/condominios", requireAuth, requireRole("admin", "sindico"), async (req, res): Promise<void> => {
+  const auth = (req as Request & { auth?: { userId: string; sessionClaims?: Record<string, unknown> } }).auth;
+  const emailAddress = auth?.sessionClaims?.["email"] as string | undefined;
+  const name = auth?.sessionClaims?.["name"] as string | undefined;
+  const callerUser = await upsertUser(auth!.userId, emailAddress ?? "", name);
+
   const {
     nome, cnpj, tipoCondominio, endereco, cep, bairro, cidade, estado,
     totalUnidades, totalBlocos, totalAndares, anoConstrucao, telefone, email,
@@ -277,6 +282,12 @@ router.post("/condominios", requireAuth, requireRole("admin"), async (req, res):
     equipe: equipe ?? null,
     ativo: ativo !== false,
   }).returning();
+
+  // Auto-associate sindico with the newly created condominium
+  if (callerUser.role === "sindico") {
+    await db.insert(userCondominiosTable).values({ userId: callerUser.id, condominioId: created.id });
+  }
+
   res.status(201).json(formatCondo(created));
 });
 
@@ -294,10 +305,16 @@ router.get("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
   res.json(formatCondo(condo));
 });
 
-router.patch("/condominios/:id", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
+router.patch("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
   const id = parseInt(req.params.id as string, 10);
   if (isNaN(id)) {
     res.status(400).json({ error: "ID inválido" });
+    return;
+  }
+  const user = await authorizeCondominioAccess(req, res, id);
+  if (!user) return;
+  if (user.role === "vistoriador") {
+    res.status(403).json({ error: "Acesso negado." });
     return;
   }
   const {

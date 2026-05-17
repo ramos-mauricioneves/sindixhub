@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, boolean, integer, real, json } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, boolean, integer, real, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -34,7 +34,7 @@ export const condominiosTable = pgTable("condominios", {
   areaLazerM2: real("area_lazer_m2"),
   numElevadores: integer("num_elevadores"),
   tipoPortaria: text("tipo_portaria"),
-  equipe: json("equipe").$type<EquipeData>(),
+  equipe: jsonb("equipe").$type<EquipeData>(),
   ativo: boolean("ativo").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
