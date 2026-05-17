@@ -177,8 +177,15 @@ router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): P
   if (!VALID_AREA_TIPOS.includes(tipo)) {
     res.status(400).json({ error: `tipo inválido. Valores: ${VALID_AREA_TIPOS.join(", ")}` }); return;
   }
-  if (privacidade && !VALID_PRIVACIDADE.includes(privacidade)) {
+  if (privacidade !== undefined && privacidade !== null && !VALID_PRIVACIDADE.includes(privacidade)) {
     res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }); return;
+  }
+  let parsedAndar: number | null = null;
+  if (andar != null && andar !== "") {
+    parsedAndar = parseInt(andar, 10);
+    if (isNaN(parsedAndar) || !isFinite(parsedAndar)) {
+      res.status(400).json({ error: "andar deve ser um número inteiro válido" }); return;
+    }
   }
 
   const [created] = await db.insert(areasTable).values({
@@ -186,8 +193,8 @@ router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): P
     nome,
     tipo,
     bloco: bloco ?? null,
-    andar: andar != null ? parseInt(andar) : null,
-    privacidade: privacidade ?? "publica",
+    andar: parsedAndar,
+    privacidade: privacidade || "publica",
     descricao: descricao ?? null,
     capacidade: capacidade ? parseInt(capacidade) : null,
     reservavel: reservavel === true,
@@ -213,15 +220,21 @@ router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (req
   if (tipo && !VALID_AREA_TIPOS.includes(tipo)) {
     res.status(400).json({ error: `tipo inválido. Valores: ${VALID_AREA_TIPOS.join(", ")}` }); return;
   }
-  if (privacidade && !VALID_PRIVACIDADE.includes(privacidade)) {
+  if (privacidade !== undefined && privacidade !== null && !VALID_PRIVACIDADE.includes(privacidade)) {
     res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }); return;
+  }
+  if (andar !== undefined && andar != null && andar !== "") {
+    const parsedAndarPatch = parseInt(andar, 10);
+    if (isNaN(parsedAndarPatch) || !isFinite(parsedAndarPatch)) {
+      res.status(400).json({ error: "andar deve ser um número inteiro válido" }); return;
+    }
   }
 
   const updateData: Partial<typeof areasTable.$inferInsert> = {};
   if (nome !== undefined) updateData.nome = nome;
   if (tipo !== undefined) updateData.tipo = tipo;
   if (bloco !== undefined) updateData.bloco = bloco ?? null;
-  if (andar !== undefined) updateData.andar = andar != null ? parseInt(andar) : null;
+  if (andar !== undefined) updateData.andar = (andar != null && andar !== "") ? parseInt(andar, 10) : null;
   if (privacidade !== undefined) updateData.privacidade = privacidade;
   if (descricao !== undefined) updateData.descricao = descricao;
   if (capacidade !== undefined) updateData.capacidade = capacidade ? parseInt(capacidade) : null;
