@@ -39,9 +39,9 @@ export default defineConfig({
       base: basePath,
       scope: basePath,
       manifest: {
-        name: "Assistente de Vistoria Condominial",
-        short_name: "Vistoria",
-        description: "Ferramenta de vistoria condominial com suporte offline",
+        name: "SindixHub",
+        short_name: "SindixHub",
+        description: "Plataforma modular de gestão condominial para síndicos profissionais",
         theme_color: "#2563eb",
         background_color: "#ffffff",
         display: "standalone",

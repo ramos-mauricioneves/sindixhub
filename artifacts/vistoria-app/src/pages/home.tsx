@@ -73,7 +73,7 @@ export default function HomeRedirect() {
           <header className="p-4 flex items-center justify-between border-b bg-card">
             <div className="flex items-center gap-2 text-primary font-bold text-xl">
               <Building2 className="h-6 w-6" />
-              <span>CondoGest</span>
+              <span>SindixHub</span>
             </div>
             <div className="flex items-center gap-3">
               <LanguageSwitcher />

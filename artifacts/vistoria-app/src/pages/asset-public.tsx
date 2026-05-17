@@ -78,7 +78,7 @@ export default function AssetPublicPage() {
         <div className="max-w-2xl mx-auto flex items-center gap-3">
           <Building2 className="h-7 w-7" />
           <div>
-            <p className="text-xs opacity-90">CondoGest</p>
+            <p className="text-xs opacity-90">SindixHub</p>
             <p className="font-bold text-lg leading-tight">{data.condominioNome}</p>
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function AssetPublicPage() {
         )}
 
         <p className="text-center text-xs text-muted-foreground pt-4">
-          Acesso público via QR code · CondoGest
+          Acesso público via QR code · SindixHub
         </p>
       </div>
     </div>

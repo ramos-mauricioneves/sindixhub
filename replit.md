@@ -37,7 +37,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ## Artifacts
 
-### CondoGest — Gestao Condominial (`artifacts/vistoria-app`)
+### SindixHub — Gestao Condominial (`artifacts/vistoria-app`)
 
 React + Vite mobile-first PWA frontend for professional sindico (building manager) inspection management. Building managers record audio and capture photos during inspections; AI generates professional notices. Also manages condominiums and assets (CMDB). Focused on inspection workflows.
 
@@ -127,7 +127,7 @@ Express 5 backend with Clerk authentication middleware. Public routes exist (no 
 - `userCondominiosTable` — userId (FK), condominioId (FK) — many-to-many for sindico access scoping
 
 **Removed (not present):**
-- `moradoresTable` — was removed to keep the platform lean. Resident management is not part of CondoGest.
+- `moradoresTable` — was removed to keep the platform lean. Resident management is not part of SindixHub.
 
 **Inspection Status Workflow:**
 `gerado` (default, created by AI) → `pronto_para_envio` (ready to send, set by sindico/admin) → `enviado` (sent, set by sindico/admin)

@@ -35,8 +35,8 @@ export default {
     assembleias: "Assembleias",
   },
   home: {
-    title: "Assistente de Vistoria Condominial",
-    subtitle: "Ferramenta profissional para síndicos e vistoriadores. Registre ocorrências, analise imagens e gere relatórios com IA diretamente do local.",
+    title: "SindixHub",
+    subtitle: "Plataforma modular de gestão condominial para síndicos profissionais. Módulos de Vistorias, Ativos, Assembleias e muito mais — tudo integrado com IA.",
     signIn: "Fazer Login",
     signUp: "Criar Conta",
     enter: "Entrar",

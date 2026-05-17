@@ -90,7 +90,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <aside className="hidden md:flex flex-col w-64 bg-card border-r px-4 py-6">
           <div className="flex items-center gap-2 px-2 mb-8 text-primary font-bold text-xl">
             <Building2 className="h-6 w-6" />
-            <span>CondoGest</span>
+            <span>SindixHub</span>
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto">
@@ -166,7 +166,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="md:hidden flex items-center justify-between p-4 bg-card border-b">
             <div className="flex items-center gap-2 text-primary font-bold text-lg">
               <Building2 className="h-5 w-5" />
-              <span>CondoGest</span>
+              <span>SindixHub</span>
             </div>
             <div className="flex items-center gap-2">
               <LanguageSwitcher />
