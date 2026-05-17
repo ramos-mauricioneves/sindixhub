@@ -24,6 +24,14 @@ tags:
     description: Asset (CMDB) management
   - name: dashboard
     description: Dashboard summary
+  - name: contratos
+    description: Contract management per condominium
+  - name: prestadores
+    description: Service provider management
+  - name: documentos
+    description: Document and inspection report management
+  - name: seguro
+    description: Building insurance management
 paths:
   /healthz:
     get:
@@ -736,6 +744,376 @@ paths:
                 required:
                   - ok
 
+  /condominios/{condominioId}/contratos:
+    get:
+      operationId: listContratos
+      tags: [contratos]
+      summary: List contracts for a condominium
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of contracts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContratoCondominio"
+    post:
+      operationId: createContrato
+      tags: [contratos]
+      summary: Create a contract
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContratoCondominioBody"
+      responses:
+        "201":
+          description: Contract created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContratoCondominio"
+
+  /condominios/{condominioId}/contratos/{contratoId}:
+    patch:
+      operationId: updateContrato
+      tags: [contratos]
+      summary: Update a contract
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: contratoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContratoCondominioBody"
+      responses:
+        "200":
+          description: Contract updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContratoCondominio"
+    delete:
+      operationId: deleteContrato
+      tags: [contratos]
+      summary: Delete a contract
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: contratoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Contract deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /condominios/{condominioId}/prestadores:
+    get:
+      operationId: listPrestadores
+      tags: [prestadores]
+      summary: List service providers for a condominium
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of service providers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PrestadorCondominio"
+    post:
+      operationId: createPrestador
+      tags: [prestadores]
+      summary: Create a service provider
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrestadorCondominioBody"
+      responses:
+        "201":
+          description: Provider created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrestadorCondominio"
+
+  /condominios/{condominioId}/prestadores/{prestadorId}:
+    patch:
+      operationId: updatePrestador
+      tags: [prestadores]
+      summary: Update a service provider
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: prestadorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrestadorCondominioBody"
+      responses:
+        "200":
+          description: Provider updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrestadorCondominio"
+    delete:
+      operationId: deletePrestador
+      tags: [prestadores]
+      summary: Delete a service provider
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: prestadorId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Provider deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /condominios/{condominioId}/documentos:
+    get:
+      operationId: listDocumentos
+      tags: [documentos]
+      summary: List documents for a condominium
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentoCondominio"
+    post:
+      operationId: createDocumento
+      tags: [documentos]
+      summary: Create a document record
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentoCondominioBody"
+      responses:
+        "201":
+          description: Document created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentoCondominio"
+
+  /condominios/{condominioId}/documentos/{documentoId}:
+    patch:
+      operationId: updateDocumento
+      tags: [documentos]
+      summary: Update a document record
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: documentoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentoCondominioBody"
+      responses:
+        "200":
+          description: Document updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentoCondominio"
+    delete:
+      operationId: deleteDocumento
+      tags: [documentos]
+      summary: Delete a document record
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: documentoId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /condominios/{condominioId}/seguro:
+    get:
+      operationId: getSeguroPredial
+      tags: [seguro]
+      summary: Get building insurance for a condominium (null if none)
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Insurance record or null
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeguroPredial"
+        "404":
+          description: No insurance record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    put:
+      operationId: upsertSeguroPredial
+      tags: [seguro]
+      summary: Create or update building insurance
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeguroPredialBody"
+      responses:
+        "200":
+          description: Insurance saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeguroPredial"
+
+  /condominios/{condominioId}/health:
+    get:
+      operationId: getCondominioHealth
+      tags: [condominios]
+      summary: Get health/alert summary for a condominium
+      parameters:
+        - name: condominioId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Health summary with expiry counts
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CondominioHealth"
+
   /dashboard/summary:
     get:
       operationId: getDashboardSummary
@@ -1061,6 +1439,24 @@ components:
         administradora:
           type: string
           nullable: true
+        inscricaoMunicipal:
+          type: string
+          nullable: true
+        areaTotalM2:
+          type: number
+          nullable: true
+        areaLazerM2:
+          type: number
+          nullable: true
+        numElevadores:
+          type: integer
+          nullable: true
+        tipoPortaria:
+          type: string
+          nullable: true
+        equipe:
+          $ref: "#/components/schemas/EquipeData"
+          nullable: true
         ativo:
           type: boolean
         createdAt:
@@ -1111,6 +1507,18 @@ components:
           type: string
         administradora:
           type: string
+        inscricaoMunicipal:
+          type: string
+        areaTotalM2:
+          type: number
+        areaLazerM2:
+          type: number
+        numElevadores:
+          type: integer
+        tipoPortaria:
+          type: string
+        equipe:
+          $ref: "#/components/schemas/EquipeData"
         ativo:
           type: boolean
       required:
@@ -1394,6 +1802,328 @@ components:
         - totalInspections
         - periodMonths
         - generatedAt
+
+    EquipeData:
+      type: object
+      properties:
+        subSindico:
+          type: object
+          nullable: true
+          properties:
+            nome:
+              type: string
+            telefone:
+              type: string
+            email:
+              type: string
+        zelador:
+          type: object
+          nullable: true
+          properties:
+            tipo:
+              type: string
+            nome:
+              type: string
+            telefone:
+              type: string
+            empresaTerceirizadora:
+              type: string
+        portaria:
+          type: object
+          nullable: true
+          properties:
+            tipo:
+              type: string
+            empresa:
+              type: string
+        asg:
+          type: object
+          nullable: true
+          properties:
+            quantidade:
+              type: integer
+            empresa:
+              type: string
+        seguranca:
+          type: object
+          nullable: true
+          properties:
+            quantidade:
+              type: integer
+            empresa:
+              type: string
+
+    ContratoCondominio:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        tipoServico:
+          type: string
+        empresa:
+          type: string
+          nullable: true
+        cnpjEmpresa:
+          type: string
+          nullable: true
+        telefoneEmpresa:
+          type: string
+          nullable: true
+        emailEmpresa:
+          type: string
+          nullable: true
+        valorMensal:
+          type: number
+          nullable: true
+        vigenciaInicio:
+          type: string
+          nullable: true
+        vigenciaFim:
+          type: string
+          nullable: true
+        periodicidadeVisita:
+          type: string
+          nullable: true
+        statusVigencia:
+          type: string
+          enum: [ativo, a_vencer, vencido]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - tipoServico
+        - statusVigencia
+        - createdAt
+        - updatedAt
+
+    ContratoCondominioBody:
+      type: object
+      properties:
+        tipoServico:
+          type: string
+        empresa:
+          type: string
+        cnpjEmpresa:
+          type: string
+        telefoneEmpresa:
+          type: string
+        emailEmpresa:
+          type: string
+        valorMensal:
+          type: number
+        vigenciaInicio:
+          type: string
+        vigenciaFim:
+          type: string
+        periodicidadeVisita:
+          type: string
+      required:
+        - tipoServico
+
+    PrestadorCondominio:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        nome:
+          type: string
+        especialidade:
+          type: string
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        avaliacao:
+          type: integer
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - nome
+        - createdAt
+
+    PrestadorCondominioBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        especialidade:
+          type: string
+        telefone:
+          type: string
+        email:
+          type: string
+        avaliacao:
+          type: integer
+        observacoes:
+          type: string
+      required:
+        - nome
+
+    DocumentoCondominio:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        tipo:
+          type: string
+        numeroReferencia:
+          type: string
+          nullable: true
+        dataEmissao:
+          type: string
+          nullable: true
+        dataValidade:
+          type: string
+          nullable: true
+        empresaResponsavel:
+          type: string
+          nullable: true
+        statusDocumento:
+          type: string
+          enum: [valido, a_vencer, vencido]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - tipo
+        - statusDocumento
+        - createdAt
+        - updatedAt
+
+    DocumentoCondominioBody:
+      type: object
+      properties:
+        tipo:
+          type: string
+        numeroReferencia:
+          type: string
+        dataEmissao:
+          type: string
+        dataValidade:
+          type: string
+        empresaResponsavel:
+          type: string
+      required:
+        - tipo
+
+    SeguroPredial:
+      type: object
+      properties:
+        id:
+          type: integer
+        condominioId:
+          type: integer
+        seguradora:
+          type: string
+          nullable: true
+        numeroApolice:
+          type: string
+          nullable: true
+        vigenciaInicio:
+          type: string
+          nullable: true
+        vigenciaFim:
+          type: string
+          nullable: true
+        tipoCobertura:
+          type: string
+          nullable: true
+        valorSegurado:
+          type: number
+          nullable: true
+        nomeCorretor:
+          type: string
+          nullable: true
+        telefoneCorretor:
+          type: string
+          nullable: true
+        statusVigencia:
+          type: string
+          enum: [ativo, a_vencer, vencido, sem_registro]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - condominioId
+        - statusVigencia
+        - createdAt
+        - updatedAt
+
+    SeguroPredialBody:
+      type: object
+      properties:
+        seguradora:
+          type: string
+        numeroApolice:
+          type: string
+        vigenciaInicio:
+          type: string
+        vigenciaFim:
+          type: string
+        tipoCobertura:
+          type: string
+        valorSegurado:
+          type: number
+        nomeCorretor:
+          type: string
+        telefoneCorretor:
+          type: string
+
+    CondominioHealth:
+      type: object
+      properties:
+        condominioId:
+          type: integer
+        contratosVencidos:
+          type: integer
+        contratosAVencer:
+          type: integer
+        documentosVencidos:
+          type: integer
+        documentosAVencer:
+          type: integer
+        seguroVencido:
+          type: boolean
+        seguroAVencer:
+          type: boolean
+      required:
+        - condominioId
+        - contratosVencidos
+        - contratosAVencer
+        - documentosVencidos
+        - documentosAVencer
+        - seguroVencido
+        - seguroAVencer
 
     ErrorResponse:
       type: object

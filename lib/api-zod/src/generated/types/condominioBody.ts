@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 import type { CondominioBodyTipoCondominio } from "./condominioBodyTipoCondominio";
+import type { EquipeData } from "./equipeData";
 
 export interface CondominioBody {
   nome: string;
@@ -25,5 +26,11 @@ export interface CondominioBody {
   sindico?: string;
   zelador?: string;
   administradora?: string;
+  inscricaoMunicipal?: string;
+  areaTotalM2?: number;
+  areaLazerM2?: number;
+  numElevadores?: number;
+  tipoPortaria?: string;
+  equipe?: EquipeData;
   ativo?: boolean;
 }

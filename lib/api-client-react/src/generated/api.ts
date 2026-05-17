@@ -25,9 +25,17 @@ import type {
   AssetBody,
   Condominio,
   CondominioBody,
+  CondominioHealth,
+  ContratoCondominio,
+  ContratoCondominioBody,
   DashboardSummary,
   DeleteArea200,
   DeleteAsset200,
+  DeleteContrato200,
+  DeleteDocumento200,
+  DeletePrestador200,
+  DocumentoCondominio,
+  DocumentoCondominioBody,
   ErrorResponse,
   GenerateReportBody,
   GetAssembleiasInsightsParams,
@@ -36,10 +44,14 @@ import type {
   InspectionReport,
   ListAssetsParams,
   ListInspectionsParams,
+  PrestadorCondominio,
+  PrestadorCondominioBody,
   PublicAsset,
   RemoveUserCondominio200,
   SaveInspectionBody,
   SavedInspection,
+  SeguroPredial,
+  SeguroPredialBody,
   UpdateInspectionStatusBody,
   UpdateUserRoleBody,
   UserCondominioBody,
@@ -2292,6 +2304,1423 @@ export const useDeleteAsset = <
 > => {
   return useMutation(getDeleteAssetMutationOptions(options));
 };
+
+/**
+ * @summary List contracts for a condominium
+ */
+export const getListContratosUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/contratos`;
+};
+
+export const listContratos = async (
+  condominioId: number,
+  options?: RequestInit,
+): Promise<ContratoCondominio[]> => {
+  return customFetch<ContratoCondominio[]>(getListContratosUrl(condominioId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListContratosQueryKey = (condominioId: number) => {
+  return [`/api/condominios/${condominioId}/contratos`] as const;
+};
+
+export const getListContratosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listContratos>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listContratos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListContratosQueryKey(condominioId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listContratos>>> = ({
+    signal,
+  }) => listContratos(condominioId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listContratos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListContratosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listContratos>>
+>;
+export type ListContratosQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List contracts for a condominium
+ */
+
+export function useListContratos<
+  TData = Awaited<ReturnType<typeof listContratos>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listContratos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListContratosQueryOptions(condominioId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a contract
+ */
+export const getCreateContratoUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/contratos`;
+};
+
+export const createContrato = async (
+  condominioId: number,
+  contratoCondominioBody: ContratoCondominioBody,
+  options?: RequestInit,
+): Promise<ContratoCondominio> => {
+  return customFetch<ContratoCondominio>(getCreateContratoUrl(condominioId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(contratoCondominioBody),
+  });
+};
+
+export const getCreateContratoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createContrato>>,
+    TError,
+    { condominioId: number; data: BodyType<ContratoCondominioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createContrato>>,
+  TError,
+  { condominioId: number; data: BodyType<ContratoCondominioBody> },
+  TContext
+> => {
+  const mutationKey = ["createContrato"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createContrato>>,
+    { condominioId: number; data: BodyType<ContratoCondominioBody> }
+  > = (props) => {
+    const { condominioId, data } = props ?? {};
+
+    return createContrato(condominioId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateContratoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createContrato>>
+>;
+export type CreateContratoMutationBody = BodyType<ContratoCondominioBody>;
+export type CreateContratoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a contract
+ */
+export const useCreateContrato = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createContrato>>,
+    TError,
+    { condominioId: number; data: BodyType<ContratoCondominioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createContrato>>,
+  TError,
+  { condominioId: number; data: BodyType<ContratoCondominioBody> },
+  TContext
+> => {
+  return useMutation(getCreateContratoMutationOptions(options));
+};
+
+/**
+ * @summary Update a contract
+ */
+export const getUpdateContratoUrl = (
+  condominioId: number,
+  contratoId: number,
+) => {
+  return `/api/condominios/${condominioId}/contratos/${contratoId}`;
+};
+
+export const updateContrato = async (
+  condominioId: number,
+  contratoId: number,
+  contratoCondominioBody: ContratoCondominioBody,
+  options?: RequestInit,
+): Promise<ContratoCondominio> => {
+  return customFetch<ContratoCondominio>(
+    getUpdateContratoUrl(condominioId, contratoId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(contratoCondominioBody),
+    },
+  );
+};
+
+export const getUpdateContratoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateContrato>>,
+    TError,
+    {
+      condominioId: number;
+      contratoId: number;
+      data: BodyType<ContratoCondominioBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateContrato>>,
+  TError,
+  {
+    condominioId: number;
+    contratoId: number;
+    data: BodyType<ContratoCondominioBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateContrato"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateContrato>>,
+    {
+      condominioId: number;
+      contratoId: number;
+      data: BodyType<ContratoCondominioBody>;
+    }
+  > = (props) => {
+    const { condominioId, contratoId, data } = props ?? {};
+
+    return updateContrato(condominioId, contratoId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateContratoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateContrato>>
+>;
+export type UpdateContratoMutationBody = BodyType<ContratoCondominioBody>;
+export type UpdateContratoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a contract
+ */
+export const useUpdateContrato = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateContrato>>,
+    TError,
+    {
+      condominioId: number;
+      contratoId: number;
+      data: BodyType<ContratoCondominioBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateContrato>>,
+  TError,
+  {
+    condominioId: number;
+    contratoId: number;
+    data: BodyType<ContratoCondominioBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateContratoMutationOptions(options));
+};
+
+/**
+ * @summary Delete a contract
+ */
+export const getDeleteContratoUrl = (
+  condominioId: number,
+  contratoId: number,
+) => {
+  return `/api/condominios/${condominioId}/contratos/${contratoId}`;
+};
+
+export const deleteContrato = async (
+  condominioId: number,
+  contratoId: number,
+  options?: RequestInit,
+): Promise<DeleteContrato200> => {
+  return customFetch<DeleteContrato200>(
+    getDeleteContratoUrl(condominioId, contratoId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteContratoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteContrato>>,
+    TError,
+    { condominioId: number; contratoId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteContrato>>,
+  TError,
+  { condominioId: number; contratoId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteContrato"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteContrato>>,
+    { condominioId: number; contratoId: number }
+  > = (props) => {
+    const { condominioId, contratoId } = props ?? {};
+
+    return deleteContrato(condominioId, contratoId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteContratoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteContrato>>
+>;
+
+export type DeleteContratoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a contract
+ */
+export const useDeleteContrato = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteContrato>>,
+    TError,
+    { condominioId: number; contratoId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteContrato>>,
+  TError,
+  { condominioId: number; contratoId: number },
+  TContext
+> => {
+  return useMutation(getDeleteContratoMutationOptions(options));
+};
+
+/**
+ * @summary List service providers for a condominium
+ */
+export const getListPrestadoresUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/prestadores`;
+};
+
+export const listPrestadores = async (
+  condominioId: number,
+  options?: RequestInit,
+): Promise<PrestadorCondominio[]> => {
+  return customFetch<PrestadorCondominio[]>(
+    getListPrestadoresUrl(condominioId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListPrestadoresQueryKey = (condominioId: number) => {
+  return [`/api/condominios/${condominioId}/prestadores`] as const;
+};
+
+export const getListPrestadoresQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPrestadores>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPrestadores>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListPrestadoresQueryKey(condominioId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPrestadores>>> = ({
+    signal,
+  }) => listPrestadores(condominioId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPrestadores>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPrestadoresQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPrestadores>>
+>;
+export type ListPrestadoresQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List service providers for a condominium
+ */
+
+export function useListPrestadores<
+  TData = Awaited<ReturnType<typeof listPrestadores>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listPrestadores>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPrestadoresQueryOptions(condominioId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a service provider
+ */
+export const getCreatePrestadorUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/prestadores`;
+};
+
+export const createPrestador = async (
+  condominioId: number,
+  prestadorCondominioBody: PrestadorCondominioBody,
+  options?: RequestInit,
+): Promise<PrestadorCondominio> => {
+  return customFetch<PrestadorCondominio>(getCreatePrestadorUrl(condominioId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(prestadorCondominioBody),
+  });
+};
+
+export const getCreatePrestadorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPrestador>>,
+    TError,
+    { condominioId: number; data: BodyType<PrestadorCondominioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPrestador>>,
+  TError,
+  { condominioId: number; data: BodyType<PrestadorCondominioBody> },
+  TContext
+> => {
+  const mutationKey = ["createPrestador"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPrestador>>,
+    { condominioId: number; data: BodyType<PrestadorCondominioBody> }
+  > = (props) => {
+    const { condominioId, data } = props ?? {};
+
+    return createPrestador(condominioId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePrestadorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPrestador>>
+>;
+export type CreatePrestadorMutationBody = BodyType<PrestadorCondominioBody>;
+export type CreatePrestadorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a service provider
+ */
+export const useCreatePrestador = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPrestador>>,
+    TError,
+    { condominioId: number; data: BodyType<PrestadorCondominioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPrestador>>,
+  TError,
+  { condominioId: number; data: BodyType<PrestadorCondominioBody> },
+  TContext
+> => {
+  return useMutation(getCreatePrestadorMutationOptions(options));
+};
+
+/**
+ * @summary Update a service provider
+ */
+export const getUpdatePrestadorUrl = (
+  condominioId: number,
+  prestadorId: number,
+) => {
+  return `/api/condominios/${condominioId}/prestadores/${prestadorId}`;
+};
+
+export const updatePrestador = async (
+  condominioId: number,
+  prestadorId: number,
+  prestadorCondominioBody: PrestadorCondominioBody,
+  options?: RequestInit,
+): Promise<PrestadorCondominio> => {
+  return customFetch<PrestadorCondominio>(
+    getUpdatePrestadorUrl(condominioId, prestadorId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(prestadorCondominioBody),
+    },
+  );
+};
+
+export const getUpdatePrestadorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePrestador>>,
+    TError,
+    {
+      condominioId: number;
+      prestadorId: number;
+      data: BodyType<PrestadorCondominioBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePrestador>>,
+  TError,
+  {
+    condominioId: number;
+    prestadorId: number;
+    data: BodyType<PrestadorCondominioBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updatePrestador"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePrestador>>,
+    {
+      condominioId: number;
+      prestadorId: number;
+      data: BodyType<PrestadorCondominioBody>;
+    }
+  > = (props) => {
+    const { condominioId, prestadorId, data } = props ?? {};
+
+    return updatePrestador(condominioId, prestadorId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePrestadorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePrestador>>
+>;
+export type UpdatePrestadorMutationBody = BodyType<PrestadorCondominioBody>;
+export type UpdatePrestadorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a service provider
+ */
+export const useUpdatePrestador = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePrestador>>,
+    TError,
+    {
+      condominioId: number;
+      prestadorId: number;
+      data: BodyType<PrestadorCondominioBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePrestador>>,
+  TError,
+  {
+    condominioId: number;
+    prestadorId: number;
+    data: BodyType<PrestadorCondominioBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdatePrestadorMutationOptions(options));
+};
+
+/**
+ * @summary Delete a service provider
+ */
+export const getDeletePrestadorUrl = (
+  condominioId: number,
+  prestadorId: number,
+) => {
+  return `/api/condominios/${condominioId}/prestadores/${prestadorId}`;
+};
+
+export const deletePrestador = async (
+  condominioId: number,
+  prestadorId: number,
+  options?: RequestInit,
+): Promise<DeletePrestador200> => {
+  return customFetch<DeletePrestador200>(
+    getDeletePrestadorUrl(condominioId, prestadorId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeletePrestadorMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePrestador>>,
+    TError,
+    { condominioId: number; prestadorId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePrestador>>,
+  TError,
+  { condominioId: number; prestadorId: number },
+  TContext
+> => {
+  const mutationKey = ["deletePrestador"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePrestador>>,
+    { condominioId: number; prestadorId: number }
+  > = (props) => {
+    const { condominioId, prestadorId } = props ?? {};
+
+    return deletePrestador(condominioId, prestadorId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePrestadorMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePrestador>>
+>;
+
+export type DeletePrestadorMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a service provider
+ */
+export const useDeletePrestador = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePrestador>>,
+    TError,
+    { condominioId: number; prestadorId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePrestador>>,
+  TError,
+  { condominioId: number; prestadorId: number },
+  TContext
+> => {
+  return useMutation(getDeletePrestadorMutationOptions(options));
+};
+
+/**
+ * @summary List documents for a condominium
+ */
+export const getListDocumentosUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/documentos`;
+};
+
+export const listDocumentos = async (
+  condominioId: number,
+  options?: RequestInit,
+): Promise<DocumentoCondominio[]> => {
+  return customFetch<DocumentoCondominio[]>(
+    getListDocumentosUrl(condominioId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListDocumentosQueryKey = (condominioId: number) => {
+  return [`/api/condominios/${condominioId}/documentos`] as const;
+};
+
+export const getListDocumentosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDocumentos>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDocumentos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListDocumentosQueryKey(condominioId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listDocumentos>>> = ({
+    signal,
+  }) => listDocumentos(condominioId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDocumentos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListDocumentosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDocumentos>>
+>;
+export type ListDocumentosQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List documents for a condominium
+ */
+
+export function useListDocumentos<
+  TData = Awaited<ReturnType<typeof listDocumentos>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listDocumentos>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDocumentosQueryOptions(condominioId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a document record
+ */
+export const getCreateDocumentoUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/documentos`;
+};
+
+export const createDocumento = async (
+  condominioId: number,
+  documentoCondominioBody: DocumentoCondominioBody,
+  options?: RequestInit,
+): Promise<DocumentoCondominio> => {
+  return customFetch<DocumentoCondominio>(getCreateDocumentoUrl(condominioId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(documentoCondominioBody),
+  });
+};
+
+export const getCreateDocumentoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDocumento>>,
+    TError,
+    { condominioId: number; data: BodyType<DocumentoCondominioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDocumento>>,
+  TError,
+  { condominioId: number; data: BodyType<DocumentoCondominioBody> },
+  TContext
+> => {
+  const mutationKey = ["createDocumento"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDocumento>>,
+    { condominioId: number; data: BodyType<DocumentoCondominioBody> }
+  > = (props) => {
+    const { condominioId, data } = props ?? {};
+
+    return createDocumento(condominioId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDocumentoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDocumento>>
+>;
+export type CreateDocumentoMutationBody = BodyType<DocumentoCondominioBody>;
+export type CreateDocumentoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a document record
+ */
+export const useCreateDocumento = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDocumento>>,
+    TError,
+    { condominioId: number; data: BodyType<DocumentoCondominioBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDocumento>>,
+  TError,
+  { condominioId: number; data: BodyType<DocumentoCondominioBody> },
+  TContext
+> => {
+  return useMutation(getCreateDocumentoMutationOptions(options));
+};
+
+/**
+ * @summary Update a document record
+ */
+export const getUpdateDocumentoUrl = (
+  condominioId: number,
+  documentoId: number,
+) => {
+  return `/api/condominios/${condominioId}/documentos/${documentoId}`;
+};
+
+export const updateDocumento = async (
+  condominioId: number,
+  documentoId: number,
+  documentoCondominioBody: DocumentoCondominioBody,
+  options?: RequestInit,
+): Promise<DocumentoCondominio> => {
+  return customFetch<DocumentoCondominio>(
+    getUpdateDocumentoUrl(condominioId, documentoId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(documentoCondominioBody),
+    },
+  );
+};
+
+export const getUpdateDocumentoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDocumento>>,
+    TError,
+    {
+      condominioId: number;
+      documentoId: number;
+      data: BodyType<DocumentoCondominioBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateDocumento>>,
+  TError,
+  {
+    condominioId: number;
+    documentoId: number;
+    data: BodyType<DocumentoCondominioBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["updateDocumento"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateDocumento>>,
+    {
+      condominioId: number;
+      documentoId: number;
+      data: BodyType<DocumentoCondominioBody>;
+    }
+  > = (props) => {
+    const { condominioId, documentoId, data } = props ?? {};
+
+    return updateDocumento(condominioId, documentoId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateDocumentoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateDocumento>>
+>;
+export type UpdateDocumentoMutationBody = BodyType<DocumentoCondominioBody>;
+export type UpdateDocumentoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a document record
+ */
+export const useUpdateDocumento = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateDocumento>>,
+    TError,
+    {
+      condominioId: number;
+      documentoId: number;
+      data: BodyType<DocumentoCondominioBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateDocumento>>,
+  TError,
+  {
+    condominioId: number;
+    documentoId: number;
+    data: BodyType<DocumentoCondominioBody>;
+  },
+  TContext
+> => {
+  return useMutation(getUpdateDocumentoMutationOptions(options));
+};
+
+/**
+ * @summary Delete a document record
+ */
+export const getDeleteDocumentoUrl = (
+  condominioId: number,
+  documentoId: number,
+) => {
+  return `/api/condominios/${condominioId}/documentos/${documentoId}`;
+};
+
+export const deleteDocumento = async (
+  condominioId: number,
+  documentoId: number,
+  options?: RequestInit,
+): Promise<DeleteDocumento200> => {
+  return customFetch<DeleteDocumento200>(
+    getDeleteDocumentoUrl(condominioId, documentoId),
+    {
+      ...options,
+      method: "DELETE",
+    },
+  );
+};
+
+export const getDeleteDocumentoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDocumento>>,
+    TError,
+    { condominioId: number; documentoId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteDocumento>>,
+  TError,
+  { condominioId: number; documentoId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteDocumento"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteDocumento>>,
+    { condominioId: number; documentoId: number }
+  > = (props) => {
+    const { condominioId, documentoId } = props ?? {};
+
+    return deleteDocumento(condominioId, documentoId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteDocumentoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteDocumento>>
+>;
+
+export type DeleteDocumentoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a document record
+ */
+export const useDeleteDocumento = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteDocumento>>,
+    TError,
+    { condominioId: number; documentoId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteDocumento>>,
+  TError,
+  { condominioId: number; documentoId: number },
+  TContext
+> => {
+  return useMutation(getDeleteDocumentoMutationOptions(options));
+};
+
+/**
+ * @summary Get building insurance for a condominium (null if none)
+ */
+export const getGetSeguroPredialUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/seguro`;
+};
+
+export const getSeguroPredial = async (
+  condominioId: number,
+  options?: RequestInit,
+): Promise<SeguroPredial> => {
+  return customFetch<SeguroPredial>(getGetSeguroPredialUrl(condominioId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSeguroPredialQueryKey = (condominioId: number) => {
+  return [`/api/condominios/${condominioId}/seguro`] as const;
+};
+
+export const getGetSeguroPredialQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSeguroPredial>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSeguroPredial>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSeguroPredialQueryKey(condominioId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSeguroPredial>>
+  > = ({ signal }) =>
+    getSeguroPredial(condominioId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSeguroPredial>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSeguroPredialQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSeguroPredial>>
+>;
+export type GetSeguroPredialQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get building insurance for a condominium (null if none)
+ */
+
+export function useGetSeguroPredial<
+  TData = Awaited<ReturnType<typeof getSeguroPredial>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSeguroPredial>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSeguroPredialQueryOptions(condominioId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update building insurance
+ */
+export const getUpsertSeguroPredialUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/seguro`;
+};
+
+export const upsertSeguroPredial = async (
+  condominioId: number,
+  seguroPredialBody: SeguroPredialBody,
+  options?: RequestInit,
+): Promise<SeguroPredial> => {
+  return customFetch<SeguroPredial>(getUpsertSeguroPredialUrl(condominioId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(seguroPredialBody),
+  });
+};
+
+export const getUpsertSeguroPredialMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertSeguroPredial>>,
+    TError,
+    { condominioId: number; data: BodyType<SeguroPredialBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertSeguroPredial>>,
+  TError,
+  { condominioId: number; data: BodyType<SeguroPredialBody> },
+  TContext
+> => {
+  const mutationKey = ["upsertSeguroPredial"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertSeguroPredial>>,
+    { condominioId: number; data: BodyType<SeguroPredialBody> }
+  > = (props) => {
+    const { condominioId, data } = props ?? {};
+
+    return upsertSeguroPredial(condominioId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertSeguroPredialMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertSeguroPredial>>
+>;
+export type UpsertSeguroPredialMutationBody = BodyType<SeguroPredialBody>;
+export type UpsertSeguroPredialMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or update building insurance
+ */
+export const useUpsertSeguroPredial = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertSeguroPredial>>,
+    TError,
+    { condominioId: number; data: BodyType<SeguroPredialBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertSeguroPredial>>,
+  TError,
+  { condominioId: number; data: BodyType<SeguroPredialBody> },
+  TContext
+> => {
+  return useMutation(getUpsertSeguroPredialMutationOptions(options));
+};
+
+/**
+ * @summary Get health/alert summary for a condominium
+ */
+export const getGetCondominioHealthUrl = (condominioId: number) => {
+  return `/api/condominios/${condominioId}/health`;
+};
+
+export const getCondominioHealth = async (
+  condominioId: number,
+  options?: RequestInit,
+): Promise<CondominioHealth> => {
+  return customFetch<CondominioHealth>(
+    getGetCondominioHealthUrl(condominioId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCondominioHealthQueryKey = (condominioId: number) => {
+  return [`/api/condominios/${condominioId}/health`] as const;
+};
+
+export const getGetCondominioHealthQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCondominioHealth>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCondominioHealth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCondominioHealthQueryKey(condominioId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCondominioHealth>>
+  > = ({ signal }) =>
+    getCondominioHealth(condominioId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!condominioId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCondominioHealth>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCondominioHealthQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCondominioHealth>>
+>;
+export type GetCondominioHealthQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get health/alert summary for a condominium
+ */
+
+export function useGetCondominioHealth<
+  TData = Awaited<ReturnType<typeof getCondominioHealth>>,
+  TError = ErrorType<unknown>,
+>(
+  condominioId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCondominioHealth>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCondominioHealthQueryOptions(
+    condominioId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Get dashboard summary for current user

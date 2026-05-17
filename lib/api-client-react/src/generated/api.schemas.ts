@@ -227,6 +227,42 @@ export const CondominioTipoCondominio = {
   misto: "misto",
 } as const;
 
+export type EquipeDataSubSindico = {
+  nome?: string;
+  telefone?: string;
+  email?: string;
+} | null;
+
+export type EquipeDataZelador = {
+  tipo?: string;
+  nome?: string;
+  telefone?: string;
+  empresaTerceirizadora?: string;
+} | null;
+
+export type EquipeDataPortaria = {
+  tipo?: string;
+  empresa?: string;
+} | null;
+
+export type EquipeDataAsg = {
+  quantidade?: number;
+  empresa?: string;
+} | null;
+
+export type EquipeDataSeguranca = {
+  quantidade?: number;
+  empresa?: string;
+} | null;
+
+export interface EquipeData {
+  subSindico?: EquipeDataSubSindico;
+  zelador?: EquipeDataZelador;
+  portaria?: EquipeDataPortaria;
+  asg?: EquipeDataAsg;
+  seguranca?: EquipeDataSeguranca;
+}
+
 export interface Condominio {
   id: number;
   nome: string;
@@ -246,6 +282,12 @@ export interface Condominio {
   sindico?: string | null;
   zelador?: string | null;
   administradora?: string | null;
+  inscricaoMunicipal?: string | null;
+  areaTotalM2?: number | null;
+  areaLazerM2?: number | null;
+  numElevadores?: number | null;
+  tipoPortaria?: string | null;
+  equipe?: EquipeData | null;
   ativo: boolean;
   createdAt: string;
 }
@@ -277,6 +319,12 @@ export interface CondominioBody {
   sindico?: string;
   zelador?: string;
   administradora?: string;
+  inscricaoMunicipal?: string;
+  areaTotalM2?: number;
+  areaLazerM2?: number;
+  numElevadores?: number;
+  tipoPortaria?: string;
+  equipe?: EquipeData;
   ativo?: boolean;
 }
 
@@ -453,6 +501,142 @@ export interface AssembleiasInsights {
   generatedAt: string;
 }
 
+export type ContratoCondominioStatusVigencia =
+  (typeof ContratoCondominioStatusVigencia)[keyof typeof ContratoCondominioStatusVigencia];
+
+export const ContratoCondominioStatusVigencia = {
+  ativo: "ativo",
+  a_vencer: "a_vencer",
+  vencido: "vencido",
+} as const;
+
+export interface ContratoCondominio {
+  id: number;
+  condominioId: number;
+  tipoServico: string;
+  empresa?: string | null;
+  cnpjEmpresa?: string | null;
+  telefoneEmpresa?: string | null;
+  emailEmpresa?: string | null;
+  valorMensal?: number | null;
+  vigenciaInicio?: string | null;
+  vigenciaFim?: string | null;
+  periodicidadeVisita?: string | null;
+  statusVigencia: ContratoCondominioStatusVigencia;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ContratoCondominioBody {
+  tipoServico: string;
+  empresa?: string;
+  cnpjEmpresa?: string;
+  telefoneEmpresa?: string;
+  emailEmpresa?: string;
+  valorMensal?: number;
+  vigenciaInicio?: string;
+  vigenciaFim?: string;
+  periodicidadeVisita?: string;
+}
+
+export interface PrestadorCondominio {
+  id: number;
+  condominioId: number;
+  nome: string;
+  especialidade?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  avaliacao?: number | null;
+  observacoes?: string | null;
+  createdAt: string;
+}
+
+export interface PrestadorCondominioBody {
+  nome: string;
+  especialidade?: string;
+  telefone?: string;
+  email?: string;
+  avaliacao?: number;
+  observacoes?: string;
+}
+
+export type DocumentoCondominioStatusDocumento =
+  (typeof DocumentoCondominioStatusDocumento)[keyof typeof DocumentoCondominioStatusDocumento];
+
+export const DocumentoCondominioStatusDocumento = {
+  valido: "valido",
+  a_vencer: "a_vencer",
+  vencido: "vencido",
+} as const;
+
+export interface DocumentoCondominio {
+  id: number;
+  condominioId: number;
+  tipo: string;
+  numeroReferencia?: string | null;
+  dataEmissao?: string | null;
+  dataValidade?: string | null;
+  empresaResponsavel?: string | null;
+  statusDocumento: DocumentoCondominioStatusDocumento;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocumentoCondominioBody {
+  tipo: string;
+  numeroReferencia?: string;
+  dataEmissao?: string;
+  dataValidade?: string;
+  empresaResponsavel?: string;
+}
+
+export type SeguroPredialStatusVigencia =
+  (typeof SeguroPredialStatusVigencia)[keyof typeof SeguroPredialStatusVigencia];
+
+export const SeguroPredialStatusVigencia = {
+  ativo: "ativo",
+  a_vencer: "a_vencer",
+  vencido: "vencido",
+  sem_registro: "sem_registro",
+} as const;
+
+export interface SeguroPredial {
+  id: number;
+  condominioId: number;
+  seguradora?: string | null;
+  numeroApolice?: string | null;
+  vigenciaInicio?: string | null;
+  vigenciaFim?: string | null;
+  tipoCobertura?: string | null;
+  valorSegurado?: number | null;
+  nomeCorretor?: string | null;
+  telefoneCorretor?: string | null;
+  statusVigencia: SeguroPredialStatusVigencia;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeguroPredialBody {
+  seguradora?: string;
+  numeroApolice?: string;
+  vigenciaInicio?: string;
+  vigenciaFim?: string;
+  tipoCobertura?: string;
+  valorSegurado?: number;
+  nomeCorretor?: string;
+  telefoneCorretor?: string;
+}
+
+export interface CondominioHealth {
+  condominioId: number;
+  contratosVencidos: number;
+  contratosAVencer: number;
+  documentosVencidos: number;
+  documentosAVencer: number;
+  seguroVencido: boolean;
+  seguroAVencer: boolean;
+}
+
 export interface ErrorResponse {
   error: string;
   details?: string;
@@ -539,6 +723,18 @@ export const ListAssetsStatus = {
 } as const;
 
 export type DeleteAsset200 = {
+  ok: boolean;
+};
+
+export type DeleteContrato200 = {
+  ok: boolean;
+};
+
+export type DeletePrestador200 = {
+  ok: boolean;
+};
+
+export type DeleteDocumento200 = {
   ok: boolean;
 };
 
