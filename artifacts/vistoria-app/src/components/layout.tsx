@@ -2,9 +2,11 @@ import React, { createContext, useContext } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
-import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, ClipboardCheck, Lightbulb } from "lucide-react";
+import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, ClipboardCheck, Lightbulb, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/App";
+import ConnectionStatus from "@/components/connection-status";
+import { useOfflineSyncContext } from "@/contexts/offline-sync-context";
 
 const UserContext = createContext<UserProfile | undefined>(undefined);
 
@@ -40,6 +42,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const { data: user, isPending, isError } = useGetMe();
   const signOut = useSignOut();
   const [location] = useLocation();
+  const { pendingCount, isOnline } = useOfflineSyncContext();
 
   if (isPending) {
     return (
@@ -109,6 +112,33 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </Link>
               );
             })}
+
+            {/* Offline Queue nav item — always shown */}
+            {(() => {
+              const queuePath = "/app/fila-offline";
+              const isActive = location === queuePath;
+              return (
+                <Link
+                  href={queuePath}
+                  className={`flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+                    isActive
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                  data-testid="nav-desktop-fila-offline"
+                >
+                  <Clock className="h-5 w-5 shrink-0" />
+                  <span>{t("nav.filaOffline")}</span>
+                  {pendingCount > 0 && (
+                    <span className={`ml-auto text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                      isOnline ? "bg-blue-100 text-blue-800" : "bg-amber-100 text-amber-800"
+                    }`}>
+                      {pendingCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })()}
           </nav>
 
           <div className="mt-auto border-t pt-4 space-y-2">
@@ -151,6 +181,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Button>
             </div>
           </div>
+
+          {/* Connection Status Banner */}
+          <ConnectionStatus />
+
           <div className="flex-1 overflow-auto bg-background p-4 md:p-8">
             <div className="mx-auto max-w-3xl w-full">
               {children}
@@ -160,7 +194,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
         {/* Mobile Bottom Nav — show max 5 most important items */}
         <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t flex justify-around p-2 pb-safe z-50">
-          {navItems.slice(0, 5).map((item) => {
+          {navItems.slice(0, 4).map((item) => {
             const isActive = location === item.path || location.startsWith(`${item.path}/`);
             return (
               <Link
@@ -176,6 +210,30 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               </Link>
             );
           })}
+          {/* Offline Queue in mobile nav */}
+          {(() => {
+            const queuePath = "/app/fila-offline";
+            const isActive = location === queuePath;
+            return (
+              <Link
+                href={queuePath}
+                className={`flex flex-col items-center justify-center p-2 min-w-[52px] transition-colors relative ${
+                  isActive ? "text-primary" : "text-muted-foreground"
+                }`}
+                data-testid="nav-mobile-fila-offline"
+              >
+                <div className="relative">
+                  <Clock className="h-5 w-5 mb-1" />
+                  {pendingCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-amber-500 text-white text-[8px] flex items-center justify-center font-bold">
+                      {pendingCount > 9 ? "9+" : pendingCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[9px] font-medium leading-tight text-center">{t("nav.filaOffline")}</span>
+              </Link>
+            );
+          })()}
         </nav>
       </div>
     </UserContext.Provider>

@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2,
   Stethoscope, Wrench, Zap, TrendingUp, ClipboardCheck, HardHat, Calendar,
-  CalendarDays, Key, Siren, MapPin, Users, Clock
+  CalendarDays, Key, Siren, MapPin, Users, Clock, WifiOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,9 @@ import {
   getListInspectionsQueryKey, getListCondominiosQueryKey, getListAreasQueryKey, getListAssetsQueryKey,
   InspectionReport, Area
 } from "@workspace/api-client-react";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { saveOfflineInspection } from "@/lib/offline-db";
+import { v4 as uuidv4 } from "uuid";
 
 const TIPO_EVENTO_OPTIONS = [
   { value: "vistoria", icon: Stethoscope, labelKey: "novaVistoria_tipoEvento.vistoria", color: "text-blue-600 border-blue-300 bg-blue-50" },
@@ -78,6 +81,7 @@ export default function NovaVistoriaPage() {
   const { toast } = useToast();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const isOnline = useOnlineStatus();
 
   const [isRecording, setIsRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
@@ -89,6 +93,7 @@ export default function NovaVistoriaPage() {
   const [images, setImages] = useState<File[]>([]);
   const [local, setLocal] = useState("");
   const [notes, setNotes] = useState("");
+  const NONE_VALUE = "__none__";
   const [condominioId, setCondominioId] = useState<string>("");
   const [areaId, setAreaId] = useState<string>("");
   const [assetId, setAssetId] = useState<string>("");
@@ -115,6 +120,7 @@ export default function NovaVistoriaPage() {
   const [report, setReport] = useState<InspectionReport | null>(null);
   const [editedComunicado, setEditedComunicado] = useState("");
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [isSavingOffline, setIsSavingOffline] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -191,11 +197,56 @@ export default function NovaVistoriaPage() {
 
   const removeImage = (index: number) => setImages(prev => prev.filter((_, i) => i !== index));
 
+  const handleSaveOffline = async () => {
+    if (!audioBlob) {
+      toast({ title: t("novaVistoria.audioRequired"), description: t("novaVistoria.audioRequiredDesc"), variant: "destructive" });
+      return;
+    }
+    setIsSavingOffline(true);
+    try {
+      const condominioName = condominioId
+        ? condominios?.find(c => c.id === parseInt(condominioId, 10))?.nome
+        : undefined;
+
+      await saveOfflineInspection({
+        id: uuidv4(),
+        createdAt: Date.now(),
+        status: "pending",
+        condominioId: condominioId ? parseInt(condominioId, 10) : undefined,
+        condominioName,
+        areaId: areaId ? parseInt(areaId, 10) : undefined,
+        assetId: assetId ? parseInt(assetId, 10) : undefined,
+        local: local || undefined,
+        notes: notes || undefined,
+        tipoEvento,
+        audioBlob,
+        imageBlobs: images.map(f => f as Blob),
+        imageNames: images.map(f => f.name),
+      });
+
+      toast({
+        title: t("offline.savedOffline"),
+        description: t("offline.savedOfflineDesc"),
+      });
+      setLocation("/app/fila-offline");
+    } catch {
+      toast({ title: t("novaVistoria.errorSaving"), description: t("novaVistoria.errorSavingDesc"), variant: "destructive" });
+    } finally {
+      setIsSavingOffline(false);
+    }
+  };
+
   const handleSubmit = () => {
     if (!audioBlob) {
       toast({ title: t("novaVistoria.audioRequired"), description: t("novaVistoria.audioRequiredDesc"), variant: "destructive" });
       return;
     }
+
+    if (!isOnline) {
+      handleSaveOffline();
+      return;
+    }
+
     generateReport.mutate({ data: { audio: audioBlob, images: images.length > 0 ? images : undefined, notes: notes || undefined } }, {
       onSuccess: (data) => {
         setReport(data);
@@ -265,6 +316,13 @@ export default function NovaVistoriaPage() {
         <h1 className="text-2xl font-bold tracking-tight">{t("novaVistoria.title")}</h1>
         <p className="text-muted-foreground">{t("novaVistoria.subtitle")}</p>
       </div>
+
+      {!isOnline && (
+        <div className="flex items-center gap-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-amber-800 text-sm">
+          <WifiOff className="h-4 w-4 flex-shrink-0" />
+          <p>{t("offline.offlineBanner")}</p>
+        </div>
+      )}
 
       <Card>
         <CardContent className="pt-6 space-y-6">
@@ -362,12 +420,12 @@ export default function NovaVistoriaPage() {
               {condominios && condominios.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t("novaVistoria.noCondominios")}</p>
               ) : (
-                <Select value={condominioId || "__none__"} onValueChange={(v) => setCondominioId(v === "__none__" ? "" : v)}>
+                <Select value={condominioId || NONE_VALUE} onValueChange={(v) => setCondominioId(v === NONE_VALUE ? "" : v)}>
                   <SelectTrigger data-testid="select-condominio">
                     <SelectValue placeholder={t("novaVistoria.condominioPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">{t("common.none")}</SelectItem>
+                    <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
                     {condominios?.map(c => (
                       <SelectItem key={c.id} value={String(c.id)}>
                         {c.nome}
@@ -445,24 +503,15 @@ export default function NovaVistoriaPage() {
                                   <Checkbox
                                     checked={selectedAreaIds.has(area.id)}
                                     onCheckedChange={() => toggleAreaSelection(area.id)}
+                                    id={`area-${area.id}`}
                                   />
                                   <div className="flex-1 min-w-0">
                                     <span className="text-sm font-medium">{area.nome}</span>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                      {area.capacidade && (
-                                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                          <Users className="h-2.5 w-2.5" />{area.capacidade}
-                                        </span>
-                                      )}
-                                      {area.horarioAbertura && area.horarioFechamento && (
-                                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                                          <Clock className="h-2.5 w-2.5" />{area.horarioAbertura}–{area.horarioFechamento}
-                                        </span>
-                                      )}
-                                      {area.reservavel && (
-                                        <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">{t("condominios.areaReservavel")}</Badge>
-                                      )}
-                                    </div>
+                                    {area.capacidade && (
+                                      <span className="text-xs text-muted-foreground ml-2">
+                                        <Users className="inline h-3 w-3 mr-0.5" />{area.capacidade}
+                                      </span>
+                                    )}
                                   </div>
                                 </label>
                               ))}
@@ -477,12 +526,12 @@ export default function NovaVistoriaPage() {
                 {escopo === "completa" && condominioId && (
                   <div className="space-y-2">
                     <Label>{t("novaVistoria.areaLabel")}</Label>
-                    <Select value={areaId || "__none__"} onValueChange={(v) => setAreaId(v === "__none__" ? "" : v)}>
+                    <Select value={areaId || NONE_VALUE} onValueChange={(v) => setAreaId(v === NONE_VALUE ? "" : v)}>
                       <SelectTrigger data-testid="select-area">
                         <SelectValue placeholder={t("novaVistoria.areaPlaceholder")} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="__none__">{t("common.none")}</SelectItem>
+                        <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
                         {areas?.map(a => (
                           <SelectItem key={a.id} value={String(a.id)}>
                             {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
@@ -498,12 +547,12 @@ export default function NovaVistoriaPage() {
             {condominioId && assets && assets.length > 0 && (
               <div className="space-y-2">
                 <Label>{t("novaVistoria_tipoEvento.assetLabel")}</Label>
-                <Select value={assetId || "__none__"} onValueChange={(v) => setAssetId(v === "__none__" ? "" : v)}>
+                <Select value={assetId || NONE_VALUE} onValueChange={(v) => setAssetId(v === NONE_VALUE ? "" : v)}>
                   <SelectTrigger data-testid="select-asset">
                     <SelectValue placeholder={t("novaVistoria_tipoEvento.assetPlaceholder")} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__none__">{t("common.none")}</SelectItem>
+                    <SelectItem value={NONE_VALUE}>{t("common.none")}</SelectItem>
                     {assets.map(a => (
                       <SelectItem key={a.id} value={String(a.id)}>
                         {a.nome} <span className="text-muted-foreground text-xs ml-1">({a.tipo})</span>
@@ -551,12 +600,32 @@ export default function NovaVistoriaPage() {
         </CardContent>
 
         {!report && (
-          <CardFooter className="bg-muted/20 border-t pt-6">
-            <Button className="w-full h-12 text-lg" onClick={handleSubmit} disabled={!audioBlob || generateReport.isPending} data-testid="button-submit-report">
-              {generateReport.isPending ? (
-                <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{loadingMessage}</>
-              ) : t("novaVistoria.generateReport")}
-            </Button>
+          <CardFooter className="bg-muted/20 border-t pt-6 flex flex-col gap-2">
+            {!isOnline ? (
+              <Button
+                className="w-full h-12 text-lg bg-amber-600 hover:bg-amber-700"
+                onClick={handleSaveOffline}
+                disabled={!audioBlob || isSavingOffline}
+                data-testid="button-save-offline"
+              >
+                {isSavingOffline ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{t("common.loading")}</>
+                ) : (
+                  <><WifiOff className="mr-2 h-5 w-5" />{t("offline.savedOffline")}</>
+                )}
+              </Button>
+            ) : (
+              <Button
+                className="w-full h-12 text-lg"
+                onClick={handleSubmit}
+                disabled={!audioBlob || generateReport.isPending}
+                data-testid="button-submit-report"
+              >
+                {generateReport.isPending ? (
+                  <><Loader2 className="mr-2 h-5 w-5 animate-spin" />{loadingMessage}</>
+                ) : t("novaVistoria.generateReport")}
+              </Button>
+            )}
           </CardFooter>
         )}
       </Card>

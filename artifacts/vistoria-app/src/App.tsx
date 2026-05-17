@@ -14,8 +14,9 @@ import AdminPage from "@/pages/admin";
 import CondominiosPage from "@/pages/condominios";
 import DashboardPage from "@/pages/dashboard";
 import AtivosPage from "@/pages/ativos";
-import AssembleiasPage from "@/pages/assembleias";
+import FilaOfflinePage from "@/pages/fila-offline";
 import Layout from "@/components/layout";
+import { OfflineSyncProvider } from "@/contexts/offline-sync-context";
 
 export const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === "true";
 
@@ -84,19 +85,21 @@ function AppRoutes() {
       {!AUTH_BYPASS && <Route path="/sign-in/*?" component={SignInPage} />}
       {!AUTH_BYPASS && <Route path="/sign-up/*?" component={SignUpPage} />}
       <Route path="/app/*">
-        <Layout>
-          <Switch>
-            <Route path="/app/dashboard" component={DashboardPage} />
-            <Route path="/app/nova-vistoria" component={NovaVistoriaPage} />
-            <Route path="/app/historico" component={HistoricoPage} />
-            <Route path="/app/vistoria/:id" component={VistoriaDetailPage} />
-            <Route path="/app/admin" component={AdminPage} />
-            <Route path="/app/condominios" component={CondominiosPage} />
-            <Route path="/app/ativos" component={AtivosPage} />
-            <Route path="/app/assembleias" component={AssembleiasPage} />
-            <Route component={NotFound} />
-          </Switch>
-        </Layout>
+        <OfflineSyncProvider>
+          <Layout>
+            <Switch>
+              <Route path="/app/dashboard" component={DashboardPage} />
+              <Route path="/app/nova-vistoria" component={NovaVistoriaPage} />
+              <Route path="/app/historico" component={HistoricoPage} />
+              <Route path="/app/vistoria/:id" component={VistoriaDetailPage} />
+              <Route path="/app/admin" component={AdminPage} />
+              <Route path="/app/condominios" component={CondominiosPage} />
+              <Route path="/app/ativos" component={AtivosPage} />
+              <Route path="/app/fila-offline" component={FilaOfflinePage} />
+              <Route component={NotFound} />
+            </Switch>
+          </Layout>
+        </OfflineSyncProvider>
       </Route>
       <Route component={NotFound} />
     </Switch>
