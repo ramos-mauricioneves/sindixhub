@@ -32,6 +32,7 @@ export default {
     reservas: "Reservations",
     ocorrencias: "Issues",
     filaOffline: "Offline Queue",
+    assembleias: "Assembly Insights",
   },
   home: {
     title: "Condominium Inspection Assistant",

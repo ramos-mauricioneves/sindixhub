@@ -14,6 +14,9 @@ import AdminPage from "@/pages/admin";
 import CondominiosPage from "@/pages/condominios";
 import DashboardPage from "@/pages/dashboard";
 import AtivosPage from "@/pages/ativos";
+import EtiquetasPage from "@/pages/etiquetas";
+import AssembleiasPage from "@/pages/assembleias";
+import AssetPublicPage from "@/pages/asset-public";
 import FilaOfflinePage from "@/pages/fila-offline";
 import Layout from "@/components/layout";
 import { OfflineSyncProvider } from "@/contexts/offline-sync-context";
@@ -84,6 +87,7 @@ function AppRoutes() {
       <Route path="/" component={HomeRedirect} />
       {!AUTH_BYPASS && <Route path="/sign-in/*?" component={SignInPage} />}
       {!AUTH_BYPASS && <Route path="/sign-up/*?" component={SignUpPage} />}
+      <Route path="/ativo/:id" component={AssetPublicPage} />
       <Route path="/app/*">
         <OfflineSyncProvider>
           <Layout>
@@ -95,6 +99,8 @@ function AppRoutes() {
               <Route path="/app/admin" component={AdminPage} />
               <Route path="/app/condominios" component={CondominiosPage} />
               <Route path="/app/ativos" component={AtivosPage} />
+              <Route path="/app/ativos/etiquetas" component={EtiquetasPage} />
+              <Route path="/app/assembleias" component={AssembleiasPage} />
               <Route path="/app/fila-offline" component={FilaOfflinePage} />
               <Route component={NotFound} />
             </Switch>

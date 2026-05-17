@@ -32,6 +32,7 @@ export default {
     reservas: "Reservas",
     ocorrencias: "Ocorrências",
     filaOffline: "Fila Offline",
+    assembleias: "Assembleias",
   },
   home: {
     title: "Assistente de Vistoria Condominial",

@@ -5,7 +5,7 @@ import {
   useUpdateAsset, useDeleteAsset, getListAssetsQueryKey, getListAreasQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Package, Plus, Pencil, Trash2, Filter, Loader2, AlertTriangle, CheckCircle2, Wrench, PackageX } from "lucide-react";
+import { Package, Plus, Pencil, Trash2, Filter, Loader2, AlertTriangle, CheckCircle2, Wrench, PackageX, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose
 } from "@/components/ui/dialog";
 import { useUser } from "@/components/layout";
+import { useLocation } from "wouter";
 
 const CRITICIDADE_COLORS: Record<string, string> = {
   alta: "bg-red-100 text-red-700 border-red-200",
@@ -60,6 +61,7 @@ export default function AtivosPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const user = useUser();
+  const [, setLocation] = useLocation();
 
   const [condominioId, setCondominioId] = useState<string>("");
   const [tipoFilter, setTipoFilter] = useState<string>("all");
@@ -174,12 +176,20 @@ export default function AtivosPage() {
           </h1>
           <p className="text-muted-foreground">{t("ativos.subtitle")}</p>
         </div>
-        {canEdit && condominioIdNum && (
-          <Button size="sm" onClick={openCreate} className="shrink-0">
-            <Plus className="h-4 w-4 mr-1" />
-            {t("ativos.addAsset")}
-          </Button>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {condominioIdNum && (
+            <Button size="sm" variant="outline" onClick={() => setLocation("/app/ativos/etiquetas")}>
+              <QrCode className="h-4 w-4 mr-1" />
+              Etiquetas
+            </Button>
+          )}
+          {canEdit && condominioIdNum && (
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-1" />
+              {t("ativos.addAsset")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Condomínio selector */}
