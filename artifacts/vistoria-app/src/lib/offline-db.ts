@@ -14,6 +14,7 @@ export interface OfflineInspection {
   local?: string;
   notes?: string;
   tipoEvento: string;
+  selectedAssetIds?: number[];
   audioBlob: Blob;
   imageBlobs: Blob[];
   imageNames: string[];

@@ -1153,7 +1153,7 @@ export function useListCondominios<
 }
 
 /**
- * @summary Create a condominio (admin only)
+ * @summary Create a condominio (admin or sindico)
  */
 export const getCreateCondominioUrl = () => {
   return `/api/condominios`;
@@ -1216,7 +1216,7 @@ export type CreateCondominioMutationBody = BodyType<CondominioBody>;
 export type CreateCondominioMutationError = ErrorType<unknown>;
 
 /**
- * @summary Create a condominio (admin only)
+ * @summary Create a condominio (admin or sindico)
  */
 export const useCreateCondominio = <
   TError = ErrorType<unknown>,
@@ -1326,7 +1326,7 @@ export function useGetCondominio<
 }
 
 /**
- * @summary Update a condominio (admin only)
+ * @summary Update a condominio (admin or associated sindico)
  */
 export const getUpdateCondominioUrl = (id: number) => {
   return `/api/condominios/${id}`;
@@ -1390,7 +1390,7 @@ export type UpdateCondominioMutationBody = BodyType<CondominioBody>;
 export type UpdateCondominioMutationError = ErrorType<unknown>;
 
 /**
- * @summary Update a condominio (admin only)
+ * @summary Update a condominio (admin or associated sindico)
  */
 export const useUpdateCondominio = <
   TError = ErrorType<unknown>,
@@ -3452,7 +3452,7 @@ export const useDeleteDocumento = <
 };
 
 /**
- * @summary Get building insurance for a condominium (null if none)
+ * @summary Get building insurance for a condominium (404 if none registered)
  */
 export const getGetSeguroPredialUrl = (condominioId: number) => {
   return `/api/condominios/${condominioId}/seguro`;
@@ -3514,7 +3514,7 @@ export type GetSeguroPredialQueryResult = NonNullable<
 export type GetSeguroPredialQueryError = ErrorType<ErrorResponse>;
 
 /**
- * @summary Get building insurance for a condominium (null if none)
+ * @summary Get building insurance for a condominium (404 if none registered)
  */
 
 export function useGetSeguroPredial<

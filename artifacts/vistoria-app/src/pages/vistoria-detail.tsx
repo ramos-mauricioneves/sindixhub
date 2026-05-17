@@ -2,8 +2,11 @@ import { useParams, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { format } from "date-fns";
 import { ptBR, enUS } from "date-fns/locale";
-import { ArrowLeft, Copy, MessageSquare, Loader2, AlertCircle, Send, CheckCheck } from "lucide-react";
-import { useGetInspection, useUpdateInspectionStatus, getGetInspectionQueryKey } from "@workspace/api-client-react";
+import { ArrowLeft, Copy, MessageSquare, Loader2, AlertCircle, Send, CheckCheck, Package } from "lucide-react";
+import {
+  useGetInspection, useUpdateInspectionStatus, getGetInspectionQueryKey,
+  useListAssets, getListAssetsQueryKey
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,6 +35,20 @@ export default function VistoriaDetailPage() {
   const { data: inspection, isPending, isError } = useGetInspection(id, {
     query: { enabled: !isNaN(id), queryKey: getGetInspectionQueryKey(id) }
   });
+
+  const condominioId = inspection?.condominioId;
+  const { data: allAssets } = useListAssets(condominioId ?? 0, {}, {
+    query: {
+      enabled: !!condominioId && !!inspection?.selectedAssetIds,
+      queryKey: getListAssetsQueryKey(condominioId ?? 0, {})
+    }
+  });
+
+  const selectedAssetIdSet: Set<number> = inspection?.selectedAssetIds
+    ? new Set(inspection.selectedAssetIds.split(",").map(Number).filter(Boolean))
+    : new Set();
+
+  const selectedAssets = (allAssets || []).filter(a => selectedAssetIdSet.has(a.id));
 
   const updateStatus = useUpdateInspectionStatus();
 
@@ -150,6 +167,31 @@ export default function VistoriaDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Selected Items */}
+      {selectedAssets.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Package className="h-4 w-4 text-muted-foreground" />
+              {t("detalhe.itensSelecionados")}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2">
+              {selectedAssets.map(asset => (
+                <div
+                  key={asset.id}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full text-sm border"
+                >
+                  <span className="font-medium">{asset.nome}</span>
+                  <span className="text-muted-foreground text-xs">({asset.tipo})</span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Recommended Action */}
       <Card className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-900">

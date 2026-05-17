@@ -129,6 +129,7 @@ export default {
     statusUpdated: "Status updated!",
     errorUpdatingStatus: "Error updating status.",
     status: "Status",
+    itensSelecionados: "Inspected Items",
   },
   admin: {
     title: "Manage Users",
@@ -557,5 +558,8 @@ export default {
     selectedAreas: "area(s) selected",
     noAreasRegistered: "No areas registered for this condominium.",
     registerAreasHint: "Register areas in the Condominiums module.",
+    itensArea: "Items in this area:",
+    selectedItems: "item(s) selected",
+    noItemsInArea: "No items registered for this area.",
   },
 };

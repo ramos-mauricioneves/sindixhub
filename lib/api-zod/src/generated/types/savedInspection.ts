@@ -30,6 +30,7 @@ export interface SavedInspection {
   tipoVistoria?: SavedInspectionTipoVistoria;
   escopo: SavedInspectionEscopo;
   areasIds?: string | null;
+  selectedAssetIds?: string | null;
   createdByClerkId: string;
   createdAt: Date;
 }

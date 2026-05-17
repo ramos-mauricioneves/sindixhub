@@ -21,6 +21,7 @@ export const inspectionsTable = pgTable("inspections", {
   tipoVistoria: text("tipo_vistoria"),
   escopo: text("escopo").notNull().default("completa"),
   areasIds: text("areas_ids"),
+  selectedAssetIds: text("selected_asset_ids"),
   createdByClerkId: text("created_by_clerk_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

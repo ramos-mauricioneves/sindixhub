@@ -109,6 +109,7 @@ export default function NovaVistoriaPage() {
   const [tipoVistoria, setTipoVistoria] = useState<string>("tecnica");
   const [escopo, setEscopo] = useState<string>("completa");
   const [selectedAreaIds, setSelectedAreaIds] = useState<Set<number>>(new Set());
+  const [selectedAssetIds, setSelectedAssetIds] = useState<Set<number>>(new Set());
 
   const { data: condominios } = useListCondominios({
     query: { queryKey: getListCondominiosQueryKey() }
@@ -148,16 +149,52 @@ export default function NovaVistoriaPage() {
   }, [generateReport.isPending, t]);
 
   useEffect(() => {
-    setAreaId(""); setAssetId(""); setSelectedAreaIds(new Set()); setEscopo("completa");
+    setAreaId(""); setAssetId(""); setSelectedAreaIds(new Set()); setSelectedAssetIds(new Set()); setEscopo("completa");
   }, [condominioId]);
 
-  const toggleAreaSelection = (id: number) => {
+  const toggleAreaSelection = (areaId: number) => {
     setSelectedAreaIds(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(areaId)) {
+        next.delete(areaId);
+        const areaAssetIds = (assets || []).filter(a => a.areaId === areaId).map(a => a.id);
+        if (areaAssetIds.length > 0) {
+          setSelectedAssetIds(prevAssets => {
+            const nextAssets = new Set(prevAssets);
+            areaAssetIds.forEach(id => nextAssets.delete(id));
+            return nextAssets;
+          });
+        }
+      } else {
+        next.add(areaId);
+      }
       return next;
     });
+  };
+
+  const toggleAssetSelection = (assetId: number) => {
+    setSelectedAssetIds(prev => {
+      const next = new Set(prev);
+      if (next.has(assetId)) next.delete(assetId);
+      else next.add(assetId);
+      return next;
+    });
+  };
+
+  const buildAssetContext = (): string => {
+    if (escopo !== "areas_especificas" || selectedAreaIds.size === 0 || !areas) return "";
+    const lines: string[] = [];
+    Array.from(selectedAreaIds).forEach(aId => {
+      const area = areas.find(a => a.id === aId);
+      if (!area) return;
+      const areaAssets = (assets || []).filter(a => a.areaId === aId && selectedAssetIds.has(a.id));
+      if (areaAssets.length > 0) {
+        lines.push(`Área: ${area.nome} | Itens: ${areaAssets.map(a => a.nome).join(", ")}`);
+      } else {
+        lines.push(`Área: ${area.nome}`);
+      }
+    });
+    return lines.length > 0 ? `\n\nÁreas vistoriadas:\n${lines.join("\n")}` : "";
   };
 
   const KNOWN_TIPOS_SET = new Set(["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao", "unidade_privativa"]);
@@ -228,6 +265,7 @@ export default function NovaVistoriaPage() {
         local: local || undefined,
         notes: notes || undefined,
         tipoEvento,
+        selectedAssetIds: selectedAssetIds.size > 0 ? Array.from(selectedAssetIds) : undefined,
         audioBlob,
         imageBlobs: images.map(f => f as Blob),
         imageNames: images.map(f => f.name),
@@ -256,7 +294,8 @@ export default function NovaVistoriaPage() {
       return;
     }
 
-    generateReport.mutate({ data: { audio: audioBlob, images: images.length > 0 ? images : undefined, notes: notes || undefined } }, {
+    const contextNotes = (notes || "") + buildAssetContext();
+    generateReport.mutate({ data: { audio: audioBlob, images: images.length > 0 ? images : undefined, notes: contextNotes || undefined } }, {
       onSuccess: (data) => {
         setReport(data);
         setEditedComunicado(data.comunicado);
@@ -271,6 +310,7 @@ export default function NovaVistoriaPage() {
 
     const isVistoria = tipoEvento === "vistoria";
     const selectedAreasArray = Array.from(selectedAreaIds);
+    const selectedAssetsArray = Array.from(selectedAssetIds);
 
     if (isVistoria && escopo === "areas_especificas" && selectedAreasArray.length === 0) {
       toast({ title: t("novaVistoria_escopo.selectAreas"), variant: "destructive" });
@@ -300,6 +340,7 @@ export default function NovaVistoriaPage() {
         tipoVistoria: isVistoria ? tipoVistoria as any : undefined,
         escopo: isVistoria ? escopo as any : undefined,
         areasIds: isVistoria && selectedAreasArray.length > 0 ? selectedAreasArray.join(",") : undefined,
+        selectedAssetIds: selectedAssetsArray.length > 0 ? selectedAssetsArray.join(",") : undefined,
       }
     }, {
       onSuccess: () => {
@@ -503,26 +544,54 @@ export default function NovaVistoriaPage() {
                             </div>
                             <div className="space-y-1 ml-1">
                               {groupedAreas[tipo].map(area => (
-                                <label
-                                  key={area.id}
-                                  className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors ${
-                                    selectedAreaIds.has(area.id) ? "bg-primary/10 border border-primary/20" : "hover:bg-muted border border-transparent"
-                                  }`}
-                                >
-                                  <Checkbox
-                                    checked={selectedAreaIds.has(area.id)}
-                                    onCheckedChange={() => toggleAreaSelection(area.id)}
-                                    id={`area-${area.id}`}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-sm font-medium">{area.nome}</span>
-                                    {area.capacidade && (
-                                      <span className="text-xs text-muted-foreground ml-2">
-                                        <Users className="inline h-3 w-3 mr-0.5" />{area.capacidade}
-                                      </span>
-                                    )}
-                                  </div>
-                                </label>
+                                <div key={area.id}>
+                                  <label
+                                    className={`flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer transition-colors ${
+                                      selectedAreaIds.has(area.id) ? "bg-primary/10 border border-primary/20" : "hover:bg-muted border border-transparent"
+                                    }`}
+                                  >
+                                    <Checkbox
+                                      checked={selectedAreaIds.has(area.id)}
+                                      onCheckedChange={() => toggleAreaSelection(area.id)}
+                                      id={`area-${area.id}`}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <span className="text-sm font-medium">{area.nome}</span>
+                                      {area.capacidade && (
+                                        <span className="text-xs text-muted-foreground ml-2">
+                                          <Users className="inline h-3 w-3 mr-0.5" />{area.capacidade}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </label>
+                                  {selectedAreaIds.has(area.id) && assets && (
+                                    <div className="ml-9 mb-1 border-l-2 border-primary/20 pl-3 space-y-1">
+                                      {assets.filter(a => a.areaId === area.id).length === 0 ? (
+                                        <p className="text-xs text-muted-foreground py-1">{t("novaVistoria_escopo.noItemsInArea")}</p>
+                                      ) : (
+                                        <>
+                                          <p className="text-xs font-medium text-muted-foreground pt-1">{t("novaVistoria_escopo.itensArea")}</p>
+                                          {assets.filter(a => a.areaId === area.id).map(asset => (
+                                            <label
+                                              key={asset.id}
+                                              className={`flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer text-sm transition-colors ${
+                                                selectedAssetIds.has(asset.id) ? "bg-primary/5 text-primary" : "hover:bg-muted"
+                                              }`}
+                                            >
+                                              <Checkbox
+                                                checked={selectedAssetIds.has(asset.id)}
+                                                onCheckedChange={() => toggleAssetSelection(asset.id)}
+                                                id={`asset-${asset.id}`}
+                                              />
+                                              <span className="font-medium">{asset.nome}</span>
+                                              <span className="text-xs text-muted-foreground">({asset.tipo})</span>
+                                            </label>
+                                          ))}
+                                        </>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               ))}
                             </div>
                           </div>
@@ -661,6 +730,11 @@ export default function NovaVistoriaPage() {
                   {escopo === "areas_especificas" && selectedAreaIds.size > 0 && (
                     <Badge variant="outline" className="text-xs">
                       {selectedAreaIds.size} {t("novaVistoria_escopo.selectedAreas")}
+                    </Badge>
+                  )}
+                  {escopo === "areas_especificas" && selectedAssetIds.size > 0 && (
+                    <Badge variant="outline" className="text-xs bg-primary/5">
+                      {selectedAssetIds.size} {t("novaVistoria_escopo.selectedItems")}
                     </Badge>
                   )}
                 </div>

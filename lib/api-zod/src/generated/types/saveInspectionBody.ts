@@ -27,4 +27,5 @@ export interface SaveInspectionBody {
   tipoVistoria?: SaveInspectionBodyTipoVistoria;
   escopo?: SaveInspectionBodyEscopo;
   areasIds?: string;
+  selectedAssetIds?: string;
 }

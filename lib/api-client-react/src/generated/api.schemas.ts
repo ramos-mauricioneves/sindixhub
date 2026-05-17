@@ -85,6 +85,7 @@ export interface SaveInspectionBody {
   tipoVistoria?: SaveInspectionBodyTipoVistoria;
   escopo?: SaveInspectionBodyEscopo;
   areasIds?: string;
+  selectedAssetIds?: string;
 }
 
 export type UpdateInspectionStatusBodyStatus =
@@ -169,6 +170,7 @@ export interface SavedInspection {
   tipoVistoria?: SavedInspectionTipoVistoria;
   escopo: SavedInspectionEscopo;
   areasIds?: string | null;
+  selectedAssetIds?: string | null;
   createdByClerkId: string;
   createdAt: string;
 }

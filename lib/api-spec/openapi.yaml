@@ -1236,6 +1236,8 @@ components:
           enum: [completa, areas_especificas]
         areasIds:
           type: string
+        selectedAssetIds:
+          type: string
       required:
         - tipo
         - urgencia
@@ -1296,6 +1298,9 @@ components:
           type: string
           enum: [completa, areas_especificas]
         areasIds:
+          type: string
+          nullable: true
+        selectedAssetIds:
           type: string
           nullable: true
         createdByClerkId:

@@ -81,6 +81,7 @@ export const ListInspectionsResponse = zod.object({
         .nullish(),
       escopo: zod.enum(["completa", "areas_especificas"]),
       areasIds: zod.string().nullish(),
+      selectedAssetIds: zod.string().nullish(),
       createdByClerkId: zod.string(),
       createdAt: zod.coerce.date(),
     }),
@@ -122,6 +123,7 @@ export const SaveInspectionBody = zod.object({
     .optional(),
   escopo: zod.enum(["completa", "areas_especificas"]).optional(),
   areasIds: zod.string().optional(),
+  selectedAssetIds: zod.string().optional(),
 });
 
 /**
@@ -160,6 +162,7 @@ export const GetInspectionResponse = zod.object({
     .nullish(),
   escopo: zod.enum(["completa", "areas_especificas"]),
   areasIds: zod.string().nullish(),
+  selectedAssetIds: zod.string().nullish(),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -204,6 +207,7 @@ export const UpdateInspectionStatusResponse = zod.object({
     .nullish(),
   escopo: zod.enum(["completa", "areas_especificas"]),
   areasIds: zod.string().nullish(),
+  selectedAssetIds: zod.string().nullish(),
   createdByClerkId: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -432,7 +436,7 @@ export const ListCondominiosResponseItem = zod.object({
 export const ListCondominiosResponse = zod.array(ListCondominiosResponseItem);
 
 /**
- * @summary Create a condominio (admin only)
+ * @summary Create a condominio (admin or sindico)
  */
 export const CreateCondominioBody = zod.object({
   nome: zod.string(),
@@ -570,7 +574,7 @@ export const GetCondominioResponse = zod.object({
 });
 
 /**
- * @summary Update a condominio (admin only)
+ * @summary Update a condominio (admin or associated sindico)
  */
 export const UpdateCondominioParams = zod.object({
   id: zod.coerce.number(),
@@ -1181,7 +1185,7 @@ export const DeleteDocumentoResponse = zod.object({
 });
 
 /**
- * @summary Get building insurance for a condominium (null if none)
+ * @summary Get building insurance for a condominium (404 if none registered)
  */
 export const GetSeguroPredialParams = zod.object({
   condominioId: zod.coerce.number(),
@@ -1297,6 +1301,7 @@ export const GetDashboardSummaryResponse = zod.object({
         .nullish(),
       escopo: zod.enum(["completa", "areas_especificas"]),
       areasIds: zod.string().nullish(),
+      selectedAssetIds: zod.string().nullish(),
       createdByClerkId: zod.string(),
       createdAt: zod.coerce.date(),
     }),

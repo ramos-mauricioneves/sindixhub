@@ -129,6 +129,7 @@ export default {
     statusUpdated: "Status atualizado!",
     errorUpdatingStatus: "Erro ao atualizar status.",
     status: "Status",
+    itensSelecionados: "Itens Vistoriados",
   },
   admin: {
     title: "Gerenciar Usuários",
@@ -557,5 +558,8 @@ export default {
     selectedAreas: "área(s) selecionada(s)",
     noAreasRegistered: "Nenhuma área cadastrada neste condomínio.",
     registerAreasHint: "Cadastre áreas no módulo Condomínios.",
+    itensArea: "Itens nesta área:",
+    selectedItems: "item(ns) selecionado(s)",
+    noItemsInArea: "Nenhum item cadastrado nesta área.",
   },
 };
