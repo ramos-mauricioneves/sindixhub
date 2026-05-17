@@ -138,15 +138,18 @@ function PrivacidadeBadge({ privacidade, t }: { privacidade: string; t: (k: stri
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const cfg: Record<string, { label: string; cls: string }> = {
-    ativo:       { label: "Ativo",        cls: "text-green-700 bg-green-50" },
-    valido:      { label: "Válido",       cls: "text-green-700 bg-green-50" },
-    a_vencer:    { label: "A Vencer",     cls: "text-amber-700 bg-amber-50" },
-    vencido:     { label: "Vencido",      cls: "text-red-700 bg-red-50" },
-    sem_registro:{ label: "Sem Registro", cls: "text-gray-500 bg-gray-100" },
+  const { t } = useTranslation();
+  const cfg: Record<string, { key: string; cls: string }> = {
+    ativo:        { key: "condominios.statusAtivo",        cls: "text-green-700 bg-green-50" },
+    valido:       { key: "condominios.statusValido",       cls: "text-green-700 bg-green-50" },
+    a_vencer:     { key: "condominios.statusAVencer",      cls: "text-amber-700 bg-amber-50" },
+    vencido:      { key: "condominios.statusVencido",      cls: "text-red-700 bg-red-50" },
+    sem_registro: { key: "condominios.statusSemRegistro",  cls: "text-gray-500 bg-gray-100" },
   };
-  const c = cfg[status] || { label: status, cls: "text-gray-600 bg-gray-50" };
-  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.cls}`}>{c.label}</span>;
+  const c = cfg[status];
+  const label = c ? t(c.key) : status;
+  const cls = c ? c.cls : "text-gray-600 bg-gray-50";
+  return <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${cls}`}>{label}</span>;
 }
 
 function SectionLabel({ icon: Icon, label }: { icon: React.ElementType; label: string }) {

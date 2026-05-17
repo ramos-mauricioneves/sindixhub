@@ -426,6 +426,11 @@ export default {
     seguroCoberturaTotal: "Full Building",
     alertasVencidos: "{{count}} expired",
     alertasAVencer: "{{count}} expiring",
+    statusAtivo: "Active",
+    statusValido: "Valid",
+    statusAVencer: "Expiring Soon",
+    statusVencido: "Expired",
+    statusSemRegistro: "Not Registered",
     alertasSemAlerta: "All up to date",
   },
   errors: {

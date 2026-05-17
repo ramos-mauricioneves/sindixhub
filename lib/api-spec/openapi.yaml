@@ -395,7 +395,7 @@ paths:
     post:
       operationId: createCondominio
       tags: [condominios]
-      summary: Create a condominio (admin only)
+      summary: Create a condominio (admin or sindico)
       requestBody:
         required: true
         content:
@@ -431,7 +431,7 @@ paths:
     patch:
       operationId: updateCondominio
       tags: [condominios]
-      summary: Update a condominio (admin only)
+      summary: Update a condominio (admin or associated sindico)
       parameters:
         - name: id
           in: path
@@ -1051,7 +1051,7 @@ paths:
     get:
       operationId: getSeguroPredial
       tags: [seguro]
-      summary: Get building insurance for a condominium (null if none)
+      summary: Get building insurance for a condominium (404 if none registered)
       parameters:
         - name: condominioId
           in: path

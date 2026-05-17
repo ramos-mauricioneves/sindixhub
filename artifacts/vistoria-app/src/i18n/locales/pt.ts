@@ -426,6 +426,11 @@ export default {
     seguroCoberturaTotal: "Total Predial",
     alertasVencidos: "{{count}} vencido(s)",
     alertasAVencer: "{{count}} a vencer",
+    statusAtivo: "Ativo",
+    statusValido: "Válido",
+    statusAVencer: "A Vencer",
+    statusVencido: "Vencido",
+    statusSemRegistro: "Sem Registro",
     alertasSemAlerta: "Tudo em dia",
   },
   errors: {
