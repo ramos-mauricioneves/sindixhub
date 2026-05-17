@@ -6,7 +6,8 @@ import { requireAuth, requireRole, upsertUser } from "../middlewares/requireAuth
 const router = Router();
 
 const VALID_TIPO_CONDOMINIO = ["residencial", "comercial", "misto"];
-const VALID_AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa"];
+const VALID_AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao"];
+const VALID_PRIVACIDADE = ["publica", "privada", "mista"];
 
 function formatCondo(c: typeof condominiosTable.$inferSelect) {
   return {
@@ -39,6 +40,9 @@ function formatArea(a: typeof areasTable.$inferSelect) {
     condominioId: a.condominioId,
     nome: a.nome,
     tipo: a.tipo,
+    bloco: a.bloco ?? null,
+    andar: a.andar ?? null,
+    privacidade: a.privacidade,
     descricao: a.descricao ?? null,
     capacidade: a.capacidade ?? null,
     reservavel: a.reservavel,
@@ -168,16 +172,22 @@ router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): P
   const condominioId = parseInt(req.params.condominioId as string, 10);
   if (isNaN(condominioId)) { res.status(400).json({ error: "ID inválido" }); return; }
 
-  const { nome, tipo, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento } = req.body;
+  const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento } = req.body;
   if (!nome || !tipo) { res.status(400).json({ error: "nome e tipo são obrigatórios" }); return; }
   if (!VALID_AREA_TIPOS.includes(tipo)) {
     res.status(400).json({ error: `tipo inválido. Valores: ${VALID_AREA_TIPOS.join(", ")}` }); return;
+  }
+  if (privacidade && !VALID_PRIVACIDADE.includes(privacidade)) {
+    res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }); return;
   }
 
   const [created] = await db.insert(areasTable).values({
     condominioId,
     nome,
     tipo,
+    bloco: bloco ?? null,
+    andar: andar != null ? parseInt(andar) : null,
+    privacidade: privacidade ?? "publica",
     descricao: descricao ?? null,
     capacidade: capacidade ? parseInt(capacidade) : null,
     reservavel: reservavel === true,
@@ -198,15 +208,21 @@ router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (req
   const areaId = parseInt(req.params.areaId as string, 10);
   if (isNaN(condominioId) || isNaN(areaId)) { res.status(400).json({ error: "IDs inválidos" }); return; }
 
-  const { nome, tipo, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo } = req.body;
+  const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo } = req.body;
 
   if (tipo && !VALID_AREA_TIPOS.includes(tipo)) {
     res.status(400).json({ error: `tipo inválido. Valores: ${VALID_AREA_TIPOS.join(", ")}` }); return;
+  }
+  if (privacidade && !VALID_PRIVACIDADE.includes(privacidade)) {
+    res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }); return;
   }
 
   const updateData: Partial<typeof areasTable.$inferInsert> = {};
   if (nome !== undefined) updateData.nome = nome;
   if (tipo !== undefined) updateData.tipo = tipo;
+  if (bloco !== undefined) updateData.bloco = bloco ?? null;
+  if (andar !== undefined) updateData.andar = andar != null ? parseInt(andar) : null;
+  if (privacidade !== undefined) updateData.privacidade = privacidade;
   if (descricao !== undefined) updateData.descricao = descricao;
   if (capacidade !== undefined) updateData.capacidade = capacidade ? parseInt(capacidade) : null;
   if (reservavel !== undefined) updateData.reservavel = reservavel;

@@ -5,11 +5,15 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.3.0
  */
+import type { AreaBodyPrivacidade } from "./areaBodyPrivacidade";
 import type { AreaBodyTipo } from "./areaBodyTipo";
 
 export interface AreaBody {
   nome: string;
   tipo: AreaBodyTipo;
+  bloco?: string;
+  andar?: number;
+  privacidade?: AreaBodyPrivacidade;
   descricao?: string;
   capacidade?: number;
   reservavel?: boolean;

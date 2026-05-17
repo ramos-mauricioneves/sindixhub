@@ -18,4 +18,6 @@ export const AreaBodyTipo = {
   infantil: "infantil",
   predial: "predial",
   administrativa: "administrativa",
+  manutencao: "manutencao",
+  circulacao: "circulacao",
 } as const;

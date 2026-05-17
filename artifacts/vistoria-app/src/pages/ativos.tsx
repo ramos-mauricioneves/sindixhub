@@ -388,9 +388,15 @@ export default function AtivosPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">{t("common.none")}</SelectItem>
-                    {(areas ?? []).map(a => (
-                      <SelectItem key={a.id} value={String(a.id)}>{a.nome}</SelectItem>
-                    ))}
+                    {(areas ?? []).map(a => {
+                      const aAny = a as any;
+                      const label = [
+                        aAny.bloco ? aAny.bloco : null,
+                        aAny.andar != null ? `${aAny.andar}º andar` : null,
+                        a.nome,
+                      ].filter(Boolean).join(" · ");
+                      return <SelectItem key={a.id} value={String(a.id)}>{label}</SelectItem>;
+                    })}
                   </SelectContent>
                 </Select>
               </div>

@@ -5,6 +5,7 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.3.0
  */
+import type { AreaPrivacidade } from "./areaPrivacidade";
 import type { AreaTipo } from "./areaTipo";
 
 export interface Area {
@@ -12,6 +13,9 @@ export interface Area {
   condominioId: number;
   nome: string;
   tipo: AreaTipo;
+  bloco?: string | null;
+  andar?: number | null;
+  privacidade: AreaPrivacidade;
   descricao?: string | null;
   capacidade?: number | null;
   reservavel: boolean;

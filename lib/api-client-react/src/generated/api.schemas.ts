@@ -292,6 +292,17 @@ export const AreaTipo = {
   infantil: "infantil",
   predial: "predial",
   administrativa: "administrativa",
+  manutencao: "manutencao",
+  circulacao: "circulacao",
+} as const;
+
+export type AreaPrivacidade =
+  (typeof AreaPrivacidade)[keyof typeof AreaPrivacidade];
+
+export const AreaPrivacidade = {
+  publica: "publica",
+  privada: "privada",
+  mista: "mista",
 } as const;
 
 export interface Area {
@@ -299,6 +310,9 @@ export interface Area {
   condominioId: number;
   nome: string;
   tipo: AreaTipo;
+  bloco?: string | null;
+  andar?: number | null;
+  privacidade: AreaPrivacidade;
   descricao?: string | null;
   capacidade?: number | null;
   reservavel: boolean;
@@ -320,11 +334,25 @@ export const AreaBodyTipo = {
   infantil: "infantil",
   predial: "predial",
   administrativa: "administrativa",
+  manutencao: "manutencao",
+  circulacao: "circulacao",
+} as const;
+
+export type AreaBodyPrivacidade =
+  (typeof AreaBodyPrivacidade)[keyof typeof AreaBodyPrivacidade];
+
+export const AreaBodyPrivacidade = {
+  publica: "publica",
+  privada: "privada",
+  mista: "mista",
 } as const;
 
 export interface AreaBody {
   nome: string;
   tipo: AreaBodyTipo;
+  bloco?: string;
+  andar?: number;
+  privacidade?: AreaBodyPrivacidade;
   descricao?: string;
   capacidade?: number;
   reservavel?: boolean;

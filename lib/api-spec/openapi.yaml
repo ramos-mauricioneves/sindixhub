@@ -1127,7 +1127,16 @@ components:
           type: string
         tipo:
           type: string
-          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa]
+          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa, manutencao, circulacao]
+        bloco:
+          type: string
+          nullable: true
+        andar:
+          type: integer
+          nullable: true
+        privacidade:
+          type: string
+          enum: [publica, privada, mista]
         descricao:
           type: string
           nullable: true
@@ -1152,6 +1161,7 @@ components:
         - condominioId
         - nome
         - tipo
+        - privacidade
         - reservavel
         - ativo
         - createdAt
@@ -1163,7 +1173,14 @@ components:
           type: string
         tipo:
           type: string
-          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa]
+          enum: [comum, lazer, esportiva, social, servico, estacionamento, infantil, predial, administrativa, manutencao, circulacao]
+        bloco:
+          type: string
+        andar:
+          type: integer
+        privacidade:
+          type: string
+          enum: [publica, privada, mista]
         descricao:
           type: string
         capacidade:

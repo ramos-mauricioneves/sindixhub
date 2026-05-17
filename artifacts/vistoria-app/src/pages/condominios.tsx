@@ -7,7 +7,7 @@ import {
 import {
   useListCondominios, useCreateCondominio, useUpdateCondominio,
   useListAreas, useCreateArea, useUpdateArea, useDeleteArea,
-  Condominio, Area,
+  Condominio, Area, AreaBodyPrivacidade, AreaBodyTipo,
   getListCondominiosQueryKey, getListAreasQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -23,10 +23,9 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 
-const AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa"] as const;
-type AreaTipo = typeof AREA_TIPOS[number];
+const AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao"] as const;
 
-const AREA_TIPO_COLORS: Record<AreaTipo, string> = {
+const AREA_TIPO_COLORS: Record<string, string> = {
   comum: "text-blue-600 bg-blue-50",
   lazer: "text-green-600 bg-green-50",
   esportiva: "text-orange-600 bg-orange-50",
@@ -36,6 +35,14 @@ const AREA_TIPO_COLORS: Record<AreaTipo, string> = {
   infantil: "text-pink-600 bg-pink-50",
   predial: "text-red-600 bg-red-50",
   administrativa: "text-indigo-600 bg-indigo-50",
+  manutencao: "text-amber-700 bg-amber-50",
+  circulacao: "text-sky-600 bg-sky-50",
+};
+
+const PRIVACIDADE_COLORS: Record<string, string> = {
+  publica: "text-green-700 bg-green-50",
+  privada: "text-slate-600 bg-slate-100",
+  mista: "text-violet-600 bg-violet-50",
 };
 
 type CondominioForm = {
@@ -55,19 +62,19 @@ const emptyForm = (): CondominioForm => ({
 });
 
 type AreaForm = {
-  nome: string; tipo: AreaTipo; descricao: string;
-  capacidade: string; reservavel: boolean;
+  nome: string; tipo: AreaBodyTipo; bloco: string; andar: string; privacidade: AreaBodyPrivacidade;
+  descricao: string; capacidade: string; reservavel: boolean;
   horarioAbertura: string; horarioFechamento: string;
 };
 
 const emptyAreaForm = (): AreaForm => ({
-  nome: "", tipo: "comum", descricao: "", capacidade: "", reservavel: false,
+  nome: "", tipo: "comum", bloco: "", andar: "", privacidade: "publica",
+  descricao: "", capacidade: "", reservavel: false,
   horarioAbertura: "", horarioFechamento: "",
 });
 
 function AreaTipoBadge({ tipo, t }: { tipo: string; t: (k: string) => string }) {
-  const tipoKey = tipo as AreaTipo;
-  const colors = AREA_TIPO_COLORS[tipoKey] || "text-gray-600 bg-gray-50";
+  const colors = AREA_TIPO_COLORS[tipo] || "text-gray-600 bg-gray-50";
   const labelMap: Record<string, string> = {
     comum: t("condominios.tipoComum"),
     lazer: t("condominios.tipoLazer"),
@@ -78,10 +85,26 @@ function AreaTipoBadge({ tipo, t }: { tipo: string; t: (k: string) => string }) 
     infantil: t("condominios.tipoInfantil"),
     predial: t("condominios.tipoPredial"),
     administrativa: t("condominios.tipoAdministrativa"),
+    manutencao: t("condominios.tipoManutencao"),
+    circulacao: t("condominios.tipoCirculacao"),
   };
   return (
     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors}`}>
       {labelMap[tipo] || tipo}
+    </span>
+  );
+}
+
+function PrivacidadeBadge({ privacidade, t }: { privacidade: string; t: (k: string) => string }) {
+  if (privacidade === "publica") return null;
+  const colors = PRIVACIDADE_COLORS[privacidade] || "text-gray-600 bg-gray-50";
+  const labelMap: Record<string, string> = {
+    privada: t("condominios.privacidadePrivada"),
+    mista: t("condominios.privacidadeMista"),
+  };
+  return (
+    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${colors}`}>
+      {labelMap[privacidade] || privacidade}
     </span>
   );
 }
@@ -110,7 +133,10 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
   const openEditArea = (area: Area) => {
     setAreaForm({
       nome: area.nome,
-      tipo: (area.tipo as AreaTipo) || "comum",
+      tipo: (area.tipo as AreaBodyTipo) || "comum",
+      bloco: (area as any).bloco || "",
+      andar: (area as any).andar != null ? String((area as any).andar) : "",
+      privacidade: ((area as any).privacidade || "publica") as AreaBodyPrivacidade,
       descricao: area.descricao || "",
       capacidade: area.capacidade?.toString() || "",
       reservavel: area.reservavel,
@@ -126,6 +152,9 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
     const payload = {
       nome: areaForm.nome.trim(),
       tipo: areaForm.tipo,
+      bloco: areaForm.bloco.trim() || undefined,
+      andar: areaForm.andar !== "" ? parseInt(areaForm.andar) : undefined,
+      privacidade: areaForm.privacidade,
       descricao: areaForm.descricao || undefined,
       capacidade: areaForm.capacidade ? parseInt(areaForm.capacidade) : undefined,
       reservavel: areaForm.reservavel,
@@ -156,12 +185,18 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
     });
   };
 
-  const grouped = (areas || []).reduce<Record<string, Area[]>>((acc, area) => {
-    const tipo = area.tipo;
-    if (!acc[tipo]) acc[tipo] = [];
-    acc[tipo].push(area);
+  const groupedByBloco = (areas || []).reduce<Record<string, Area[]>>((acc, area) => {
+    const bloco = (area as any).bloco || "__sem_bloco__";
+    if (!acc[bloco]) acc[bloco] = [];
+    acc[bloco].push(area);
     return acc;
   }, {});
+
+  const blocoKeys = Object.keys(groupedByBloco).sort((a, b) => {
+    if (a === "__sem_bloco__") return 1;
+    if (b === "__sem_bloco__") return -1;
+    return a.localeCompare(b);
+  });
 
   return (
     <div className="space-y-4">
@@ -184,19 +219,32 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
-          {AREA_TIPOS.filter(tipo => grouped[tipo]?.length).map(tipo => (
-            <div key={tipo}>
+        <div className="space-y-5">
+          {blocoKeys.map(blocoKey => (
+            <div key={blocoKey}>
               <div className="flex items-center gap-2 mb-2">
-                <AreaTipoBadge tipo={tipo} t={t} />
-                <span className="text-xs text-muted-foreground">({grouped[tipo].length})</span>
+                {blocoKey !== "__sem_bloco__" ? (
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary uppercase tracking-wide">
+                    {blocoKey}
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground font-medium">{t("condominios.semBloco")}</span>
+                )}
+                <span className="text-xs text-muted-foreground">({groupedByBloco[blocoKey].length})</span>
               </div>
               <div className="grid gap-2">
-                {grouped[tipo].map((area) => (
+                {groupedByBloco[blocoKey].map((area) => (
                   <div key={area.id} className="flex items-center justify-between bg-muted/30 rounded-lg px-3 py-2 border">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-medium text-sm">{area.nome}</span>
+                        <AreaTipoBadge tipo={area.tipo} t={t} />
+                        <PrivacidadeBadge privacidade={(area as any).privacidade || "publica"} t={t} />
+                        {(area as any).andar != null && (
+                          <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                            {(area as any).andar}º andar
+                          </span>
+                        )}
                         {area.reservavel && (
                           <Badge variant="outline" className="text-[10px] px-1.5 py-0">
                             {t("condominios.areaReservavel")}
@@ -259,7 +307,7 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
               </div>
               <div className="space-y-2">
                 <Label>{t("condominios.areaType")} *</Label>
-                <Select value={areaForm.tipo} onValueChange={(v) => setAreaForm(f => ({ ...f, tipo: v as AreaTipo }))}>
+                <Select value={areaForm.tipo} onValueChange={(v) => setAreaForm(f => ({ ...f, tipo: v as AreaBodyTipo }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {AREA_TIPOS.map(tipo => (
@@ -270,6 +318,36 @@ function AreasPanel({ condominioId }: { condominioId: number }) {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2 col-span-2">
+                <Label>{t("condominios.areaBloco")}</Label>
+                <Input
+                  value={areaForm.bloco}
+                  onChange={(e) => setAreaForm(f => ({ ...f, bloco: e.target.value }))}
+                  placeholder={t("condominios.areaBlocoPlaceholder")}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{t("condominios.areaAndar")}</Label>
+                <Input
+                  type="number"
+                  value={areaForm.andar}
+                  onChange={(e) => setAreaForm(f => ({ ...f, andar: e.target.value }))}
+                  placeholder={t("condominios.areaAndarPlaceholder")}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>{t("condominios.areaPrivacidade")}</Label>
+              <Select value={areaForm.privacidade} onValueChange={(v) => setAreaForm(f => ({ ...f, privacidade: v as AreaBodyPrivacidade }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="publica">{t("condominios.privacidadePublica")}</SelectItem>
+                  <SelectItem value="privada">{t("condominios.privacidadePrivada")}</SelectItem>
+                  <SelectItem value="mista">{t("condominios.privacidadeMista")}</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>{t("condominios.areaDescricao")}</Label>
