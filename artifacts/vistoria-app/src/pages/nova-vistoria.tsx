@@ -55,6 +55,7 @@ const AREA_TIPO_COLORS: Record<string, string> = {
   administrativa: "bg-indigo-50 text-indigo-700",
   manutencao: "bg-amber-50 text-amber-800",
   circulacao: "bg-sky-50 text-sky-700",
+  unidade_privativa: "bg-violet-50 text-violet-700",
   outros: "bg-gray-100 text-gray-700",
 };
 
@@ -77,6 +78,7 @@ function AreaTypeName({ tipo, t }: { tipo: string; t: (k: string) => string }) {
     administrativa: t("condominios.tipoAdministrativa"),
     manutencao: t("condominios.tipoManutencao"),
     circulacao: t("condominios.tipoCirculacao"),
+    unidade_privativa: t("condominios.tipoUnidadePrivativa"),
     outros: t("condominios.tipoOutros"),
   };
   return <>{labels[tipo] ?? t("condominios.tipoOutros")}</>;
@@ -158,7 +160,7 @@ export default function NovaVistoriaPage() {
     });
   };
 
-  const KNOWN_TIPOS_SET = new Set(["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao"]);
+  const KNOWN_TIPOS_SET = new Set(["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao", "unidade_privativa"]);
   const groupedAreas = (areas || []).reduce<Record<string, Area[]>>((acc, area) => {
     if (!area.ativo) return acc;
     const tipo = KNOWN_TIPOS_SET.has(area.tipo) ? area.tipo : "outros";

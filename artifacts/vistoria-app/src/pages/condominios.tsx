@@ -27,6 +27,7 @@ import { Textarea } from "@/components/ui/textarea";
 const AREA_TIPOS = ["comum", "lazer", "esportiva", "social", "servico", "estacionamento", "infantil", "predial", "administrativa", "manutencao", "circulacao"] as const;
 
 const AREA_TIPO_COLORS: Record<string, string> = {
+  unidade_privativa: "text-violet-700 bg-violet-50",
   comum: "text-blue-600 bg-blue-50",
   lazer: "text-green-600 bg-green-50",
   esportiva: "text-orange-600 bg-orange-50",
@@ -95,6 +96,7 @@ function AreaTipoBadge({ tipo, t }: { tipo: string; t: (k: string) => string }) 
     administrativa: t("condominios.tipoAdministrativa"),
     manutencao: t("condominios.tipoManutencao"),
     circulacao: t("condominios.tipoCirculacao"),
+    unidade_privativa: t("condominios.tipoUnidadePrivativa"),
   };
   return (
     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${colors}`}>
@@ -221,7 +223,7 @@ function CatalogDialog({
                 {isSelected
                   ? <Check className="h-3.5 w-3.5 shrink-0" />
                   : <Plus className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
-                <span className="truncate">{template.nome}</span>
+                <span className="truncate">{t(template.labelKey)}</span>
               </button>
             );
           })}
