@@ -35,8 +35,8 @@ export default {
     assembleias: "Assembly Insights",
   },
   home: {
-    title: "Condominium Inspection Assistant",
-    subtitle: "Professional tool for building managers and inspectors. Record incidents, analyze images and generate AI-powered reports on-site.",
+    title: "SindixHub",
+    subtitle: "Modular condominium management platform for professional building managers. Inspections, Assets, Assembly Insights and more — all AI-powered.",
     signIn: "Sign In",
     signUp: "Create Account",
     enter: "Sign in",

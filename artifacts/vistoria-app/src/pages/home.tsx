@@ -3,7 +3,8 @@ import { Show } from "@clerk/react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useGetMe } from "@workspace/api-client-react";
-import { Building2, Loader2, Globe } from "lucide-react";
+import { Loader2, Globe } from "lucide-react";
+import { SindixHubLogo } from "@/components/sindixhub-logo";
 import { Button } from "@/components/ui/button";
 import { AUTH_BYPASS } from "@/App";
 
@@ -72,7 +73,7 @@ export default function HomeRedirect() {
         <div className="min-h-[100dvh] flex flex-col bg-background text-foreground">
           <header className="p-4 flex items-center justify-between border-b bg-card">
             <div className="flex items-center gap-2 text-primary font-bold text-xl">
-              <Building2 className="h-6 w-6" />
+              <SindixHubLogo className="h-6 w-6" />
               <span>SindixHub</span>
             </div>
             <div className="flex items-center gap-3">
@@ -89,7 +90,7 @@ export default function HomeRedirect() {
           <main className="flex-1 flex flex-col items-center justify-center p-6 text-center">
             <div className="max-w-md w-full mx-auto space-y-8">
               <div className="inline-flex items-center justify-center p-4 bg-primary/10 rounded-full mb-4">
-                <Building2 className="h-12 w-12 text-primary" />
+                <SindixHubLogo className="h-12 w-12 text-primary" />
               </div>
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">
                 {t("home.title")}

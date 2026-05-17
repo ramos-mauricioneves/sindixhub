@@ -42,7 +42,7 @@ export default defineConfig({
         name: "SindixHub",
         short_name: "SindixHub",
         description: "Plataforma modular de gestão condominial para síndicos profissionais",
-        theme_color: "#2563eb",
+        theme_color: "#4338ca",
         background_color: "#ffffff",
         display: "standalone",
         orientation: "portrait",

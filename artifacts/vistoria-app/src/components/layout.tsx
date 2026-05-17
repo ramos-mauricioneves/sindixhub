@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useGetMe, UserProfile } from "@workspace/api-client-react";
 import { FileText, History, Users, LogOut, Building2, Globe, Loader2, LayoutDashboard, Package, ClipboardCheck, Lightbulb, Clock } from "lucide-react";
+import { SindixHubLogo } from "@/components/sindixhub-logo";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/App";
 import ConnectionStatus from "@/components/connection-status";
@@ -89,7 +90,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col w-64 bg-card border-r px-4 py-6">
           <div className="flex items-center gap-2 px-2 mb-8 text-primary font-bold text-xl">
-            <Building2 className="h-6 w-6" />
+            <SindixHubLogo className="h-6 w-6" />
             <span>SindixHub</span>
           </div>
 
@@ -165,7 +166,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 flex flex-col min-w-0 pb-[80px] md:pb-0">
           <div className="md:hidden flex items-center justify-between p-4 bg-card border-b">
             <div className="flex items-center gap-2 text-primary font-bold text-lg">
-              <Building2 className="h-5 w-5" />
+              <SindixHubLogo className="h-5 w-5" />
               <span>SindixHub</span>
             </div>
             <div className="flex items-center gap-2">

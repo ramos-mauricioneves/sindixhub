@@ -1,3 +1,10 @@
 <svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+  <rect width="180" height="180" rx="36" fill="#4338ca"/>
+  <circle cx="90" cy="90" r="19.5" fill="white"/>
+  <circle cx="90" cy="33.75" r="14.25" fill="white"/>
+  <circle cx="139.5" cy="120" r="14.25" fill="white"/>
+  <circle cx="40.5" cy="120" r="14.25" fill="white"/>
+  <line x1="90" y1="70.5" x2="90" y2="48" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <line x1="105.75" y1="99.75" x2="127.5" y2="111" stroke="white" stroke-width="12" stroke-linecap="round"/>
+  <line x1="74.25" y1="99.75" x2="52.5" y2="111" stroke="white" stroke-width="12" stroke-linecap="round"/>
 </svg>
