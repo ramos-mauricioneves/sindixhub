@@ -8,7 +8,7 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "deploy": "pnpm --filter @workspace/api-server run deploy && pnpm --filter @workspace/vistoria-app run deploy"
+    "deploy": "pnpm --filter @workspace/vistoria-app run build && pnpm --filter @workspace/api-server run deploy"
   },
   "private": true,
   "devDependencies": {

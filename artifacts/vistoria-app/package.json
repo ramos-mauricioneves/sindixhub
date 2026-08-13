@@ -7,8 +7,7 @@
     "dev": "vite --config vite.config.ts --host 0.0.0.0",
     "build": "vite build --config vite.config.ts",
     "serve": "vite preview --config vite.config.ts --host 0.0.0.0",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "deploy": "vite build --config vite.config.ts && wrangler pages deploy dist/public"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@hookform/resolvers": "^3.10.0",
@@ -73,7 +72,6 @@
     "vite": "catalog:",
     "vite-plugin-pwa": "^1.2.0",
     "wouter": "^3.3.5",
-    "wrangler": "^4.28.0",
     "zod": "catalog:"
   },
   "dependencies": {

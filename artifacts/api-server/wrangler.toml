@@ -13,6 +13,32 @@ compatibility_flags = ["nodejs_compat"]
 [observability]
 enabled = true
 
+# ─── Static assets (frontend) ──────────────────────────────────────────────
+# Unified deployment, matching this org's other Cloudflare Workers app
+# (meucafe/brew-buddy-ia, which does the same via Nitro's cloudflare-module
+# preset): one Worker serves both the built vistoria-app SPA and the /api/*
+# routes — no separate Cloudflare Pages project, no cross-origin CORS dance
+# between two different domains.
+#
+# `run_worker_first = ["/api/*"]` is the key line for the security property
+# the user asked for ("don't expose the API more than necessary"): only
+# requests matching /api/* ever reach this Worker's fetch handler (Hono) at
+# all. Every other request (the SPA's HTML/JS/CSS/images) is served directly
+# from Cloudflare's edge cache from the `directory` below — the Worker's code
+# never executes and is never even reachable for those paths. This is a
+# smaller attack surface than the previous split (Pages + Worker with a CORS
+# allow-list), not just a deployment convenience.
+#
+# `not_found_handling = "single-page-application"` makes any non-API,
+# non-asset path (e.g. a client-routed path like /app/dashboard on a fresh
+# load) fall back to index.html — the edge-level equivalent of the old
+# Pages `_redirects` file (`/* /index.html 200`), which is no longer needed.
+[assets]
+directory = "../vistoria-app/dist/public"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
+
 # ─── Non-secret configuration ──────────────────────────────────────────────
 # AUTH_BYPASS is a plain (non-secret) var: it's a dev-only escape hatch that
 # disables Supabase Auth entirely and impersonates a fixed local admin user.
@@ -47,15 +73,17 @@ SUPABASE_ANON_KEY = "sb_publishable_fDwriq7QZfYttdCPJXvASg_YIcgGci1"
 #   wrangler secret put GOOGLE_GENERATIVE_AI_API_KEY
 
 # ─── CORS ───────────────────────────────────────────────────────────────────
-# ALLOWED_ORIGINS is a plain (non-secret) var: comma-separated list of
-# origins allowed to make credentialed requests (see src/app.ts). Set this
-# once the Pages custom domain is known, e.g.:
+# Now that the frontend and /api/* are served from this same Worker/origin,
+# the SPA itself never triggers CORS at all (same-origin fetches). This
+# ALLOWED_ORIGINS allow-list only matters for OTHER clients calling the API
+# cross-origin (e.g. a future mobile app, a staging preview on a different
+# domain) — leave unset if there are none yet.
 # [vars]
-# ALLOWED_ORIGINS = "https://app.yourdomain.com,https://sindixhub.pages.dev"
+# ALLOWED_ORIGINS = "https://some-other-client.example.com"
 
 # ─── Routes / custom domain ────────────────────────────────────────────────
 # Uncomment and set once a custom domain is attached to this Worker in the
-# Cloudflare dashboard (Workers & Pages > sindixhub-api > Triggers):
+# Cloudflare dashboard (Workers & Pages > sindixhub > Triggers):
 # routes = [
-#   { pattern = "api.yourdomain.com/*", custom_domain = true }
+#   { pattern = "app.yourdomain.com/*", custom_domain = true }
 # ]
