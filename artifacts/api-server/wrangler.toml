@@ -1,4 +1,4 @@
-name = "sindixhub-api"
+name = "sindixhub"
 main = "src/index.ts"
 compatibility_date = "2024-11-01"
 
