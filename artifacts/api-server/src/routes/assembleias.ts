@@ -1,9 +1,10 @@
-import { Router } from "express";
-import { db, inspectionsTable, condominiosTable, assetsTable, userCondominiosTable, areasTable } from "@workspace/db";
-import { eq, desc, and, inArray, gte, sql } from "drizzle-orm";
+import { Hono } from "hono";
+import { inspectionsTable, condominiosTable, assetsTable, userCondominiosTable } from "@workspace/db/worker";
+import { eq, desc, and, inArray, gte } from "drizzle-orm";
 import { requireAuth, upsertUser } from "../middlewares/requireAuth";
+import type { AppEnv } from "../types";
 
-const router = Router();
+const router = new Hono<AppEnv>();
 
 interface AssembleiaTopic {
   titulo: string;
@@ -16,19 +17,21 @@ interface AssembleiaTopic {
   urgenciaMedia: string;
 }
 
-async function getUserCondominioIds(userId: number): Promise<number[]> {
+async function getUserCondominioIds(db: AppEnv["Variables"]["db"], userId: number): Promise<number[]> {
   const rows = await db.select().from(userCondominiosTable).where(eq(userCondominiosTable.userId, userId));
-  return rows.map(r => r.condominioId);
+  return rows.map((r) => r.condominioId);
 }
 
-router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void> => {
-  const auth = req.auth!;
-  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
-  const name = (auth as any).sessionClaims?.name as string | undefined;
-  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+router.get("/assembleias/insights", requireAuth, async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  const months = parseInt(req.query.months as string) || 6;
-  const filterCondominioId = req.query.condominioId ? parseInt(req.query.condominioId as string) : undefined;
+  const query = c.req.query();
+  const months = parseInt(query.months as string) || 6;
+  const filterCondominioId = query.condominioId ? parseInt(query.condominioId as string) : undefined;
 
   const cutoffDate = new Date();
   cutoffDate.setMonth(cutoffDate.getMonth() - months);
@@ -36,16 +39,15 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
   let condoIds: number[] = [];
   if (user.role === "admin") {
     const allCondos = await db.select({ id: condominiosTable.id }).from(condominiosTable);
-    condoIds = allCondos.map(c => c.id);
+    condoIds = allCondos.map((c) => c.id);
   } else if (user.role === "sindico") {
-    condoIds = await getUserCondominioIds(user.id);
+    condoIds = await getUserCondominioIds(db, user.id);
   }
 
   if (filterCondominioId && condoIds.includes(filterCondominioId)) {
     condoIds = [filterCondominioId];
   } else if (filterCondominioId) {
-    res.json({ topics: [], totalInspections: 0, periodMonths: months, generatedAt: new Date().toISOString() });
-    return;
+    return c.json({ topics: [], totalInspections: 0, periodMonths: months, generatedAt: new Date().toISOString() });
   }
 
   const conditions = [gte(inspectionsTable.createdAt, cutoffDate)];
@@ -62,13 +64,13 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
   const condos = condoIds.length > 0
     ? await db.select().from(condominiosTable).where(inArray(condominiosTable.id, condoIds))
     : [];
-  const condoNameMap = new Map(condos.map(c => [c.id, c.nome]));
+  const condoNameMap = new Map(condos.map((c) => [c.id, c.nome]));
 
   const criticalAssets = condoIds.length > 0
     ? await db.select().from(assetsTable)
         .where(and(
           inArray(assetsTable.condominioId, condoIds),
-          eq(assetsTable.criticidade, "alta")
+          eq(assetsTable.criticidade, "alta"),
         ))
     : [];
 
@@ -76,18 +78,18 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
     ? await db.select().from(assetsTable)
         .where(and(
           inArray(assetsTable.condominioId, condoIds),
-          eq(assetsTable.status, "em_manutencao")
+          eq(assetsTable.status, "em_manutencao"),
         ))
     : [];
 
   const topics: AssembleiaTopic[] = [];
 
-  const melhorias = inspections.filter(i => i.tipoEvento === "melhoria");
+  const melhorias = inspections.filter((i) => i.tipoEvento === "melhoria");
   if (melhorias.length > 0) {
-    const condosSet = new Set(melhorias.map(i => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
-    const tipoSet = new Set(melhorias.map(i => i.tipo));
-    const highUrgency = melhorias.filter(i => i.urgencia === "alta").length;
-    const avgUrgencia = highUrgency > melhorias.length / 2 ? "alta" : melhorias.some(i => i.urgencia === "alta") ? "media" : "baixa";
+    const condosSet = new Set(melhorias.map((i) => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
+    const tipoSet = new Set(melhorias.map((i) => i.tipo));
+    const highUrgency = melhorias.filter((i) => i.urgencia === "alta").length;
+    const avgUrgencia = highUrgency > melhorias.length / 2 ? "alta" : melhorias.some((i) => i.urgencia === "alta") ? "media" : "baixa";
 
     topics.push({
       titulo: "Melhorias Identificadas em Vistorias",
@@ -101,10 +103,10 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
     });
   }
 
-  const incidentes = inspections.filter(i => i.tipoEvento === "incidente");
+  const incidentes = inspections.filter((i) => i.tipoEvento === "incidente");
   if (incidentes.length >= 2) {
-    const condosSet = new Set(incidentes.map(i => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
-    const highUrgency = incidentes.filter(i => i.urgencia === "alta").length;
+    const condosSet = new Set(incidentes.map((i) => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
+    const highUrgency = incidentes.filter((i) => i.urgencia === "alta").length;
 
     topics.push({
       titulo: "Padrão de Incidentes Recorrentes",
@@ -118,11 +120,11 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
     });
   }
 
-  const manutencoes = inspections.filter(i => i.tipoEvento === "manutencao");
+  const manutencoes = inspections.filter((i) => i.tipoEvento === "manutencao");
   if (manutencoes.length >= 2) {
-    const condosSet = new Set(manutencoes.map(i => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
-    const highUrgency = manutencoes.filter(i => i.urgencia === "alta").length;
-    const tipoSet = new Set(manutencoes.map(i => i.tipo));
+    const condosSet = new Set(manutencoes.map((i) => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
+    const highUrgency = manutencoes.filter((i) => i.urgencia === "alta").length;
+    const tipoSet = new Set(manutencoes.map((i) => i.tipo));
 
     topics.push({
       titulo: "Demandas de Manutenção Acumuladas",
@@ -136,10 +138,10 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
     });
   }
 
-  const vistoriasAlta = inspections.filter(i => i.tipoEvento === "vistoria" && i.urgencia === "alta");
+  const vistoriasAlta = inspections.filter((i) => i.tipoEvento === "vistoria" && i.urgencia === "alta");
   if (vistoriasAlta.length > 0) {
-    const condosSet = new Set(vistoriasAlta.map(i => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
-    const tipoSet = new Set(vistoriasAlta.map(i => i.tipo));
+    const condosSet = new Set(vistoriasAlta.map((i) => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
+    const tipoSet = new Set(vistoriasAlta.map((i) => i.tipo));
 
     topics.push({
       titulo: "Vistorias com Urgência Alta",
@@ -154,8 +156,8 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
   }
 
   if (criticalAssets.length > 0) {
-    const condosSet = new Set(criticalAssets.map(a => condoNameMap.get(a.condominioId) || "").filter(Boolean));
-    const tipoSet = new Set(criticalAssets.map(a => a.tipo));
+    const condosSet = new Set(criticalAssets.map((a) => condoNameMap.get(a.condominioId) || "").filter(Boolean));
+    const tipoSet = new Set(criticalAssets.map((a) => a.tipo));
 
     topics.push({
       titulo: "Ativos com Criticidade Alta",
@@ -170,7 +172,7 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
   }
 
   if (maintenanceAssets.length > 0) {
-    const condosSet = new Set(maintenanceAssets.map(a => condoNameMap.get(a.condominioId) || "").filter(Boolean));
+    const condosSet = new Set(maintenanceAssets.map((a) => condoNameMap.get(a.condominioId) || "").filter(Boolean));
 
     topics.push({
       titulo: "Ativos em Manutenção",
@@ -191,7 +193,7 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
   }
   const recurring = Array.from(tipoMap.entries()).filter(([, count]) => count >= 3);
   if (recurring.length > 0) {
-    const condosSet = new Set(inspections.map(i => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
+    const condosSet = new Set(inspections.map((i) => condoNameMap.get(i.condominioId!) || "").filter(Boolean));
 
     topics.push({
       titulo: "Problemas Recorrentes Detectados",
@@ -200,7 +202,7 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
       descricao: `Tipos de problema repetidos: ${recurring.map(([tipo, count]) => `${tipo} (${count}x)`).join(", ")}. Sugere-se ação estrutural para evitar reincidência.`,
       evidencias: recurring.reduce((sum, [, count]) => sum + count, 0),
       condominios: Array.from(condosSet),
-      tiposEvento: [...new Set(inspections.filter(i => recurring.some(([t]) => t === i.tipo)).map(i => i.tipoEvento))],
+      tiposEvento: [...new Set(inspections.filter((i) => recurring.some(([t]) => t === i.tipo)).map((i) => i.tipoEvento))],
       urgenciaMedia: "media",
     });
   }
@@ -210,7 +212,7 @@ router.get("/assembleias/insights", requireAuth, async (req, res): Promise<void>
     return (prio[a.prioridade as keyof typeof prio] ?? 2) - (prio[b.prioridade as keyof typeof prio] ?? 2);
   });
 
-  res.json({
+  return c.json({
     topics,
     totalInspections: inspections.length,
     periodMonths: months,

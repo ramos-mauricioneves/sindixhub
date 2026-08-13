@@ -47,3 +47,12 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+
+# Cloudflare Workers (wrangler)
+.wrangler/
+.dev.vars
+.dev.vars.*
+
+# Local env files (vite dev, etc.)
+.env.local
+.env.*.local

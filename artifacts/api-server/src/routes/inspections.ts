@@ -1,41 +1,43 @@
-import { Router } from "express";
-import { db, inspectionsTable, userCondominiosTable } from "@workspace/db";
+import { Hono } from "hono";
+import { inspectionsTable, userCondominiosTable } from "@workspace/db/worker";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { requireAuth, upsertUser } from "../middlewares/requireAuth";
 import { SaveInspectionBody, ListInspectionsQueryParams } from "@workspace/api-zod";
+import type { AppEnv } from "../types";
 
-const router = Router();
+const router = new Hono<AppEnv>();
 
-async function getUserCondominioIds(userId: number): Promise<number[]> {
+async function getUserCondominioIds(db: AppEnv["Variables"]["db"], userId: number): Promise<number[]> {
   const rows = await db.select().from(userCondominiosTable).where(eq(userCondominiosTable.userId, userId));
-  return rows.map(r => r.condominioId);
+  return rows.map((r) => r.condominioId);
 }
 
-router.get("/inspections", requireAuth, async (req, res): Promise<void> => {
-  const auth = req.auth!;
-  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
-  const name = (auth as any).sessionClaims?.name as string | undefined;
-  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+router.get("/inspections", requireAuth, async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  const params = ListInspectionsQueryParams.safeParse(req.query);
+  const query = c.req.query();
+  const params = ListInspectionsQueryParams.safeParse(query);
   const page = params.success ? (params.data.page ?? 1) : 1;
   const limit = params.success ? (params.data.limit ?? 20) : 20;
   const urgenciaFilter = params.success ? params.data.urgencia : undefined;
   const offset = (page - 1) * limit;
 
-  const statusFilter = typeof req.query.status === "string" ? req.query.status : undefined;
-  const condominioIdFilter = typeof req.query.condominioId === "string" ? parseInt(req.query.condominioId, 10) : undefined;
-  const areaIdFilter = typeof req.query.areaId === "string" ? parseInt(req.query.areaId, 10) : undefined;
+  const statusFilter = typeof query.status === "string" ? query.status : undefined;
+  const condominioIdFilter = typeof query.condominioId === "string" ? parseInt(query.condominioId, 10) : undefined;
+  const areaIdFilter = typeof query.areaId === "string" ? parseInt(query.areaId, 10) : undefined;
 
   const conditions: any[] = [];
 
   if (user.role === "vistoriador") {
     conditions.push(eq(inspectionsTable.createdByClerkId, auth.userId));
   } else if (user.role === "sindico") {
-    const condoIds = await getUserCondominioIds(user.id);
+    const condoIds = await getUserCondominioIds(db, user.id);
     if (condoIds.length === 0) {
-      res.json({ inspections: [], total: 0, page, limit });
-      return;
+      return c.json({ inspections: [], total: 0, page, limit });
     }
     conditions.push(inArray(inspectionsTable.condominioId, condoIds));
   }
@@ -45,116 +47,120 @@ router.get("/inspections", requireAuth, async (req, res): Promise<void> => {
   if (condominioIdFilter && !isNaN(condominioIdFilter)) conditions.push(eq(inspectionsTable.condominioId, condominioIdFilter));
   if (areaIdFilter && !isNaN(areaIdFilter)) conditions.push(eq(inspectionsTable.areaId, areaIdFilter));
 
-  const rows = conditions.length > 0
-    ? await db.select().from(inspectionsTable).where(and(...conditions)).orderBy(desc(inspectionsTable.createdAt)).limit(limit).offset(offset)
-    : await db.select().from(inspectionsTable).orderBy(desc(inspectionsTable.createdAt)).limit(limit).offset(offset);
+  const rows =
+    conditions.length > 0
+      ? await db.select().from(inspectionsTable).where(and(...conditions)).orderBy(desc(inspectionsTable.createdAt)).limit(limit).offset(offset)
+      : await db.select().from(inspectionsTable).orderBy(desc(inspectionsTable.createdAt)).limit(limit).offset(offset);
 
-  const allRows = conditions.length > 0
-    ? await db.select().from(inspectionsTable).where(and(...conditions))
-    : await db.select().from(inspectionsTable);
+  const allRows =
+    conditions.length > 0
+      ? await db.select().from(inspectionsTable).where(and(...conditions))
+      : await db.select().from(inspectionsTable);
 
-  res.json({ inspections: rows, total: allRows.length, page, limit });
+  return c.json({ inspections: rows, total: allRows.length, page, limit });
 });
 
-router.post("/inspections", requireAuth, async (req, res): Promise<void> => {
-  const auth = req.auth!;
-  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
-  const name = (auth as any).sessionClaims?.name as string | undefined;
-  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+router.post("/inspections", requireAuth, async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  const parsed = SaveInspectionBody.safeParse(req.body);
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = SaveInspectionBody.safeParse(body);
   if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
+    return c.json({ error: parsed.error.message }, 400);
   }
 
-  const condominioId = typeof req.body.condominioId === "number" ? req.body.condominioId : null;
-  const areaId = typeof req.body.areaId === "number" ? req.body.areaId : null;
-  const assetId = typeof req.body.assetId === "number" ? req.body.assetId : null;
-  const tipoEvento = typeof req.body.tipoEvento === "string" ? req.body.tipoEvento : "vistoria";
-  const tipoVistoria = typeof req.body.tipoVistoria === "string" ? req.body.tipoVistoria : null;
-  const escopo = typeof req.body.escopo === "string" ? req.body.escopo : "completa";
-  const areasIds = typeof req.body.areasIds === "string" ? req.body.areasIds : null;
-  const selectedAssetIds = typeof req.body.selectedAssetIds === "string" ? req.body.selectedAssetIds : null;
+  const condominioId = typeof body.condominioId === "number" ? body.condominioId : null;
+  const areaId = typeof body.areaId === "number" ? body.areaId : null;
+  const assetId = typeof body.assetId === "number" ? body.assetId : null;
+  const tipoEvento = typeof body.tipoEvento === "string" ? body.tipoEvento : "vistoria";
+  const tipoVistoria = typeof body.tipoVistoria === "string" ? body.tipoVistoria : null;
+  const escopo = typeof body.escopo === "string" ? body.escopo : "completa";
+  const areasIds = typeof body.areasIds === "string" ? body.areasIds : null;
+  const selectedAssetIds = typeof body.selectedAssetIds === "string" ? body.selectedAssetIds : null;
   const condominio = parsed.data.condominio ?? user.condominio ?? null;
 
-  const [saved] = await db.insert(inspectionsTable).values({
-    tipo: parsed.data.tipo,
-    urgencia: parsed.data.urgencia,
-    acao: parsed.data.acao,
-    resumo: parsed.data.resumo,
-    comunicado: parsed.data.comunicado,
-    transcricao: parsed.data.transcricao ?? null,
-    analise_imagens: parsed.data.analise_imagens ?? null,
-    local: parsed.data.local ?? null,
-    condominio,
-    status: "gerado",
-    condominioId,
-    areaId,
-    assetId,
-    tipoEvento,
-    tipoVistoria,
-    escopo,
-    areasIds,
-    selectedAssetIds,
-    createdByClerkId: auth.userId,
-  }).returning();
+  const [saved] = await db
+    .insert(inspectionsTable)
+    .values({
+      tipo: parsed.data.tipo,
+      urgencia: parsed.data.urgencia,
+      acao: parsed.data.acao,
+      resumo: parsed.data.resumo,
+      comunicado: parsed.data.comunicado,
+      transcricao: parsed.data.transcricao ?? null,
+      analise_imagens: parsed.data.analise_imagens ?? null,
+      local: parsed.data.local ?? null,
+      condominio,
+      status: "gerado",
+      condominioId,
+      areaId,
+      assetId,
+      tipoEvento,
+      tipoVistoria,
+      escopo,
+      areasIds,
+      selectedAssetIds,
+      createdByClerkId: auth.userId,
+    })
+    .returning();
 
-  res.status(201).json(saved);
+  return c.json(saved, 201);
 });
 
-router.get("/inspections/:id", requireAuth, async (req, res): Promise<void> => {
-  const auth = req.auth!;
-  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(rawId, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "ID inválido." }); return; }
+router.get("/inspections/:id", requireAuth, async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const id = parseInt(c.req.param("id")!, 10);
+  if (isNaN(id)) return c.json({ error: "ID inválido." }, 400);
 
-  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
-  const name = (auth as any).sessionClaims?.name as string | undefined;
-  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
   const [inspection] = await db.select().from(inspectionsTable).where(eq(inspectionsTable.id, id));
-  if (!inspection) { res.status(404).json({ error: "Vistoria não encontrada." }); return; }
+  if (!inspection) return c.json({ error: "Vistoria não encontrada." }, 404);
 
   if (user.role === "vistoriador" && inspection.createdByClerkId !== auth.userId) {
-    res.status(403).json({ error: "Acesso negado." }); return;
+    return c.json({ error: "Acesso negado." }, 403);
   }
   if (user.role === "sindico") {
-    const condoIds = await getUserCondominioIds(user.id);
+    const condoIds = await getUserCondominioIds(db, user.id);
     if (inspection.condominioId && !condoIds.includes(inspection.condominioId)) {
-      res.status(403).json({ error: "Acesso negado." }); return;
+      return c.json({ error: "Acesso negado." }, 403);
     }
   }
 
-  res.json(inspection);
+  return c.json(inspection);
 });
 
-router.patch("/inspections/:id/status", requireAuth, async (req, res): Promise<void> => {
-  const auth = req.auth!;
-  const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const id = parseInt(rawId, 10);
-  if (isNaN(id)) { res.status(400).json({ error: "ID inválido." }); return; }
+router.patch("/inspections/:id/status", requireAuth, async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const id = parseInt(c.req.param("id")!, 10);
+  if (isNaN(id)) return c.json({ error: "ID inválido." }, 400);
 
-  const emailAddress = (auth as any).sessionClaims?.email as string | undefined;
-  const name = (auth as any).sessionClaims?.name as string | undefined;
-  const user = await upsertUser(auth.userId, emailAddress ?? "", name);
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
   if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Apenas síndicos podem enviar comunicados." }); return;
+    return c.json({ error: "Apenas síndicos podem enviar comunicados." }, 403);
   }
 
-  const { status } = req.body;
+  const body = await c.req.json().catch(() => ({}));
+  const { status } = body;
   if (!["pronto_para_envio", "enviado"].includes(status)) {
-    res.status(400).json({ error: "Status inválido" }); return;
+    return c.json({ error: "Status inválido" }, 400);
   }
 
-  const [updated] = await db.update(inspectionsTable)
-    .set({ status })
-    .where(eq(inspectionsTable.id, id))
-    .returning();
+  const [updated] = await db.update(inspectionsTable).set({ status }).where(eq(inspectionsTable.id, id)).returning();
 
-  if (!updated) { res.status(404).json({ error: "Vistoria não encontrada." }); return; }
-  res.json(updated);
+  if (!updated) return c.json({ error: "Vistoria não encontrada." }, 404);
+  return c.json(updated);
 });
 
 export default router;

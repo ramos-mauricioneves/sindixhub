@@ -2,19 +2,6 @@ import Anthropic from "@anthropic-ai/sdk";
 import { logger } from "../lib/logger";
 import type { OpenAIAnalysisResult } from "./openai-service";
 
-let anthropicClient: Anthropic | null = null;
-
-function getClient(): Anthropic {
-  if (!anthropicClient) {
-    const apiKey = process.env.CLAUDE_API_KEY;
-    if (!apiKey) {
-      throw new Error("CLAUDE_API_KEY environment variable is not set");
-    }
-    anthropicClient = new Anthropic({ apiKey });
-  }
-  return anthropicClient;
-}
-
 export interface InspectionReport {
   tipo: string;
   urgencia: "baixa" | "média" | "alta";
@@ -23,11 +10,19 @@ export interface InspectionReport {
   comunicado: string;
 }
 
+function getClient(apiKey: string | undefined): Anthropic {
+  if (!apiKey) {
+    throw new Error("CLAUDE_API_KEY environment variable is not set");
+  }
+  return new Anthropic({ apiKey });
+}
+
 export async function generateReport(
+  apiKey: string | undefined,
   analysisResult: OpenAIAnalysisResult,
   notes?: string
 ): Promise<InspectionReport> {
-  const client = getClient();
+  const client = getClient(apiKey);
   logger.info("Generating inspection report with Claude");
 
   const prompt = `Você é um síndico profissional.

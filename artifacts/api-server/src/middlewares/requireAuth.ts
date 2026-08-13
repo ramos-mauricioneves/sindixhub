@@ -1,13 +1,20 @@
-import { type Request, type Response, type NextFunction } from "express";
-import { db, usersTable } from "@workspace/db";
+import type { Context, Next } from "hono";
+import { usersTable } from "@workspace/db/worker";
 import { eq } from "drizzle-orm";
+import type { AppEnv } from "../types";
 import { logger } from "../lib/logger";
 
 export type UserRole = "admin" | "sindico" | "vistoriador";
 
 export const BYPASS_CLERK_ID = "bypass-admin";
 
-export async function ensureBypassUser() {
+// Note: unlike the Express version, this no longer imports a module-level
+// `db` singleton — in the Worker runtime the DB client can only be built
+// once `env` (secrets/vars) is available, i.e. per-request. All DB access
+// here takes the request-scoped `db` handle (c.get("db"), see src/app.ts
+// and src/lib/db.ts) as an explicit parameter/argument instead.
+
+export async function ensureBypassUser(db: AppEnv["Variables"]["db"]) {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, BYPASS_CLERK_ID));
   if (existing) {
     if (existing.role !== "admin") {
@@ -25,39 +32,36 @@ export async function ensureBypassUser() {
   return created;
 }
 
-export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const auth = req.auth;
+export async function requireAuth(c: Context<AppEnv>, next: Next): Promise<Response | void> {
+  const auth = c.get("auth");
   if (!auth || !auth.userId) {
-    res.status(401).json({ error: "Não autorizado. Faça login para continuar." });
-    return;
+    return c.json({ error: "Não autorizado. Faça login para continuar." }, 401);
   }
-  next();
+  await next();
 }
 
 export function requireRole(...roles: UserRole[]) {
-  return async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-    const auth = req.auth;
+  return async (c: Context<AppEnv>, next: Next): Promise<Response | void> => {
+    const auth = c.get("auth");
     if (!auth || !auth.userId) {
-      res.status(401).json({ error: "Não autorizado." });
-      return;
+      return c.json({ error: "Não autorizado." }, 401);
     }
 
+    const db = c.get("db");
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, auth.userId));
     if (!user) {
-      res.status(401).json({ error: "Usuário não encontrado." });
-      return;
+      return c.json({ error: "Usuário não encontrado." }, 401);
     }
 
     if (!roles.includes(user.role as UserRole)) {
-      res.status(403).json({ error: "Acesso negado. Permissão insuficiente." });
-      return;
+      return c.json({ error: "Acesso negado. Permissão insuficiente." }, 403);
     }
 
-    next();
+    await next();
   };
 }
 
-export async function upsertUser(clerkId: string, email: string, name?: string) {
+export async function upsertUser(db: AppEnv["Variables"]["db"], clerkId: string, email: string, name?: string) {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
   if (existing) return existing;
 

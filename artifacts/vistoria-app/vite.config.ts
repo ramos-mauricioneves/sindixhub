@@ -2,37 +2,23 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
 import { VitePWA } from "vite-plugin-pwa";
 
-const rawPort = process.env.PORT;
-
-if (!rawPort) {
-  throw new Error(
-    "PORT environment variable is required but was not provided.",
-  );
-}
-
-const port = Number(rawPort);
-
+// PORT/BASE_PATH are only meaningful for local `vite dev`/`vite preview` —
+// Cloudflare Pages builds (`vite build`) don't need a dev server port, so
+// these fall back to sane defaults instead of throwing when unset.
+const port = Number(process.env.PORT ?? 5173);
 if (Number.isNaN(port) || port <= 0) {
-  throw new Error(`Invalid PORT value: "${rawPort}"`);
+  throw new Error(`Invalid PORT value: "${process.env.PORT}"`);
 }
 
-const basePath = process.env.BASE_PATH;
-
-if (!basePath) {
-  throw new Error(
-    "BASE_PATH environment variable is required but was not provided.",
-  );
-}
+const basePath = process.env.BASE_PATH ?? "/";
 
 export default defineConfig({
   base: basePath,
   plugins: [
     react(),
     tailwindcss(),
-    runtimeErrorOverlay(),
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
@@ -97,19 +83,6 @@ export default defineConfig({
         enabled: false,
       },
     }),
-    ...(process.env.NODE_ENV !== "production" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer({
-              root: path.resolve(import.meta.dirname, ".."),
-            }),
-          ),
-          await import("@replit/vite-plugin-dev-banner").then((m) =>
-            m.devBanner(),
-          ),
-        ]
-      : []),
   ],
   resolve: {
     alias: {
@@ -130,6 +103,15 @@ export default defineConfig({
     fs: {
       strict: true,
       deny: ["**/.*"],
+    },
+    // Local dev only: in production, Pages and the Worker are served from
+    // the same origin so relative `/api/*` calls just work. In `vite dev`
+    // they're two different servers (5173 vs wrangler's 8787), so proxy.
+    proxy: {
+      "/api": {
+        target: `http://127.0.0.1:${process.env.WORKER_PORT ?? 8787}`,
+        changeOrigin: true,
+      },
     },
   },
   preview: {

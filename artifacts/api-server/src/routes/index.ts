@@ -1,4 +1,5 @@
-import { Router, type IRouter } from "express";
+import { Hono } from "hono";
+import type { AppEnv } from "../types";
 import healthRouter from "./health";
 import reportRouter from "./report";
 import usersRouter from "./users";
@@ -9,16 +10,16 @@ import publicAssetsRouter from "./public-assets";
 import dashboardRouter from "./dashboard";
 import assembleiasRouter from "./assembleias";
 
-const router: IRouter = Router();
+const router = new Hono<AppEnv>();
 
-router.use(healthRouter);
-router.use(reportRouter);
-router.use(usersRouter);
-router.use(inspectionsRouter);
-router.use(condominiosRouter);
-router.use(publicAssetsRouter);
-router.use(assetsRouter);
-router.use(dashboardRouter);
-router.use(assembleiasRouter);
+router.route("/", healthRouter);
+router.route("/", reportRouter);
+router.route("/", usersRouter);
+router.route("/", inspectionsRouter);
+router.route("/", condominiosRouter);
+router.route("/", publicAssetsRouter);
+router.route("/", assetsRouter);
+router.route("/", dashboardRouter);
+router.route("/", assembleiasRouter);
 
 export default router;

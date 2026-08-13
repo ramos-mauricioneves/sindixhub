@@ -1,20 +1,31 @@
-import pino from "pino";
+/**
+ * Minimal console-based logger for the Cloudflare Worker runtime.
+ *
+ * The Express version used pino + pino-http + pino-pretty for structured
+ * logging. pino's transports rely on Node worker_threads / file descriptors
+ * that don't exist in Workers, and Workers logs are consumed via
+ * `wrangler tail` / the dashboard as plain console output anyway, so we swap
+ * to a tiny console wrapper that preserves the same call signature used
+ * throughout the codebase: logger.info(obj, msg) / logger.info(msg).
+ */
+type LogFn = (objOrMsg: unknown, msg?: string) => void;
 
-const isProduction = process.env.NODE_ENV === "production";
+function makeLogFn(level: "info" | "warn" | "error" | "debug"): LogFn {
+  const consoleFn =
+    level === "error" ? console.error : level === "warn" ? console.warn : console.log;
 
-export const logger = pino({
-  level: process.env.LOG_LEVEL ?? "info",
-  redact: [
-    "req.headers.authorization",
-    "req.headers.cookie",
-    "res.headers['set-cookie']",
-  ],
-  ...(isProduction
-    ? {}
-    : {
-        transport: {
-          target: "pino-pretty",
-          options: { colorize: true },
-        },
-      }),
-});
+  return (objOrMsg, msg) => {
+    if (typeof objOrMsg === "string") {
+      consoleFn(`[${level}] ${objOrMsg}`);
+    } else {
+      consoleFn(`[${level}] ${msg ?? ""}`, objOrMsg);
+    }
+  };
+}
+
+export const logger = {
+  info: makeLogFn("info"),
+  warn: makeLogFn("warn"),
+  error: makeLogFn("error"),
+  debug: makeLogFn("debug"),
+};

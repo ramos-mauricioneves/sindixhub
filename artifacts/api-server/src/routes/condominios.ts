@@ -1,6 +1,5 @@
-import { Router, type Request, type Response } from "express";
+import { Hono, type Context } from "hono";
 import {
-  db,
   condominiosTable,
   areasTable,
   userCondominiosTable,
@@ -9,7 +8,7 @@ import {
   prestadoresCondominioTable,
   documentosCondominioTable,
   seguroPredialTable,
-} from "@workspace/db";
+} from "@workspace/db/worker";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireAuth, requireRole, upsertUser } from "../middlewares/requireAuth";
 import {
@@ -21,8 +20,9 @@ import {
   UpdateDocumentoBody,
   UpsertSeguroPredialBody,
 } from "@workspace/api-zod";
+import type { AppEnv } from "../types";
 
-const router = Router();
+const router = new Hono<AppEnv>();
 
 const VALID_TIPO_CONDOMINIO = ["residencial", "comercial", "misto"];
 const VALID_PRIVACIDADE = ["publica", "privada", "mista"];
@@ -173,7 +173,7 @@ function formatSeguro(s: typeof seguroPredialTable.$inferSelect) {
 
 // ─── Auth helpers ──────────────────────────────────────────────────────────────
 
-async function getUserCondominioIds(userId: number): Promise<number[]> {
+async function getUserCondominioIds(db: AppEnv["Variables"]["db"], userId: number): Promise<number[]> {
   const rows = await db
     .select()
     .from(userCondominiosTable)
@@ -186,75 +186,74 @@ async function getUserCondominioIds(userId: number): Promise<number[]> {
  * the given condominioId. Admins have unrestricted access; all other roles
  * must be explicitly associated with the condominium in user_condominios.
  * Returns the user record on success, or null if authorization fails (the
- * appropriate 403 response is sent automatically before returning null).
+ * appropriate 403 response is written to the passed-in `err` holder before
+ * returning null — callers must check for null and return that response).
  */
 async function authorizeCondominioAccess(
-  req: Request,
-  res: Response,
-  condominioId: number
-): Promise<typeof usersTable.$inferSelect | null> {
-  const auth = (req as Request & { auth?: { userId: string; sessionClaims?: Record<string, unknown> } }).auth;
-  const emailAddress = auth?.sessionClaims?.["email"] as string | undefined;
-  const name = auth?.sessionClaims?.["name"] as string | undefined;
-  const user = await upsertUser(auth!.userId, emailAddress ?? "", name);
+  c: Context<AppEnv>,
+  condominioId: number,
+): Promise<{ user: typeof usersTable.$inferSelect; error: null } | { user: null; error: Response }> {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  if (user.role === "admin") return user;
+  if (user.role === "admin") return { user, error: null };
 
-  const userCondoIds = await getUserCondominioIds(user.id);
+  const userCondoIds = await getUserCondominioIds(db, user.id);
   if (!userCondoIds.includes(condominioId)) {
-    res.status(403).json({ error: "Acesso negado. Você não tem permissão para este condomínio." });
-    return null;
+    return { user: null, error: c.json({ error: "Acesso negado. Você não tem permissão para este condomínio." }, 403) };
   }
 
-  return user;
+  return { user, error: null };
 }
 
 // ─── Condominios CRUD ─────────────────────────────────────────────────────────
 
-router.get("/condominios", requireAuth, async (req, res): Promise<void> => {
-  const auth = (req as Request & { auth?: { userId: string; sessionClaims?: Record<string, unknown> } }).auth;
-  const emailAddress = auth?.sessionClaims?.["email"] as string | undefined;
-  const name = auth?.sessionClaims?.["name"] as string | undefined;
-  const user = await upsertUser(auth!.userId, emailAddress ?? "", name);
+router.get("/condominios", requireAuth, async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
   if (user.role === "admin") {
     const all = await db.select().from(condominiosTable).orderBy(condominiosTable.nome);
-    res.json(all.map(formatCondo));
-    return;
+    return c.json(all.map(formatCondo));
   }
 
-  const condoIds = await getUserCondominioIds(user.id);
+  const condoIds = await getUserCondominioIds(db, user.id);
   if (condoIds.length === 0) {
-    res.json([]);
-    return;
+    return c.json([]);
   }
   const rows = await db
     .select()
     .from(condominiosTable)
     .where(inArray(condominiosTable.id, condoIds))
     .orderBy(condominiosTable.nome);
-  res.json(rows.map(formatCondo));
+  return c.json(rows.map(formatCondo));
 });
 
-router.post("/condominios", requireAuth, requireRole("admin", "sindico"), async (req, res): Promise<void> => {
-  const auth = (req as Request & { auth?: { userId: string; sessionClaims?: Record<string, unknown> } }).auth;
-  const emailAddress = auth?.sessionClaims?.["email"] as string | undefined;
-  const name = auth?.sessionClaims?.["name"] as string | undefined;
-  const callerUser = await upsertUser(auth!.userId, emailAddress ?? "", name);
+router.post("/condominios", requireAuth, requireRole("admin", "sindico"), async (c) => {
+  const db = c.get("db");
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const callerUser = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const {
     nome, cnpj, tipoCondominio, endereco, cep, bairro, cidade, estado,
     totalUnidades, totalBlocos, totalAndares, anoConstrucao, telefone, email,
     sindico, zelador, administradora, inscricaoMunicipal, areaTotalM2, areaLazerM2,
     numElevadores, tipoPortaria, equipe, ativo,
-  } = req.body as Record<string, unknown>;
+  } = body;
   if (!nome || typeof nome !== "string") {
-    res.status(400).json({ error: "nome é obrigatório" });
-    return;
+    return c.json({ error: "nome é obrigatório" }, 400);
   }
   if (tipoCondominio && !VALID_TIPO_CONDOMINIO.includes(tipoCondominio as string)) {
-    res.status(400).json({ error: "tipoCondominio inválido" });
-    return;
+    return c.json({ error: "tipoCondominio inválido" }, 400);
   }
   const [created] = await db.insert(condominiosTable).values({
     nome,
@@ -288,50 +287,40 @@ router.post("/condominios", requireAuth, requireRole("admin", "sindico"), async 
     await db.insert(userCondominiosTable).values({ userId: callerUser.id, condominioId: created.id });
   }
 
-  res.status(201).json(formatCondo(created));
+  return c.json(formatCondo(created), 201);
 });
 
-router.get("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id as string, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, id);
-  if (!user) return;
+router.get("/condominios/:id", requireAuth, async (c) => {
+  const id = parseInt(c.req.param("id")!, 10);
+  if (isNaN(id)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, id);
+  if (!user) return error;
+  const db = c.get("db");
   const [condo] = await db.select().from(condominiosTable).where(eq(condominiosTable.id, id));
-  if (!condo) {
-    res.status(404).json({ error: "Condomínio não encontrado" });
-    return;
-  }
-  res.json(formatCondo(condo));
+  if (!condo) return c.json({ error: "Condomínio não encontrado" }, 404);
+  return c.json(formatCondo(condo));
 });
 
-router.patch("/condominios/:id", requireAuth, async (req, res): Promise<void> => {
-  const id = parseInt(req.params.id as string, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, id);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
+router.patch("/condominios/:id", requireAuth, async (c) => {
+  const id = parseInt(c.req.param("id")!, 10);
+  if (isNaN(id)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, id);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const {
     nome, cnpj, tipoCondominio, endereco, cep, bairro, cidade, estado,
     totalUnidades, totalBlocos, totalAndares, anoConstrucao, telefone, email,
     sindico, zelador, administradora, inscricaoMunicipal, areaTotalM2, areaLazerM2,
     numElevadores, tipoPortaria, equipe, ativo,
-  } = req.body as Record<string, unknown>;
+  } = body;
   if (!nome || typeof nome !== "string") {
-    res.status(400).json({ error: "nome é obrigatório" });
-    return;
+    return c.json({ error: "nome é obrigatório" }, 400);
   }
   if (tipoCondominio && !VALID_TIPO_CONDOMINIO.includes(tipoCondominio as string)) {
-    res.status(400).json({ error: "tipoCondominio inválido" });
-    return;
+    return c.json({ error: "tipoCondominio inválido" }, 400);
   }
   const [updated] = await db
     .update(condominiosTable)
@@ -363,63 +352,46 @@ router.patch("/condominios/:id", requireAuth, async (req, res): Promise<void> =>
     })
     .where(eq(condominiosTable.id, id))
     .returning();
-  if (!updated) {
-    res.status(404).json({ error: "Condomínio não encontrado" });
-    return;
-  }
-  res.json(formatCondo(updated));
+  if (!updated) return c.json({ error: "Condomínio não encontrado" }, 404);
+  return c.json(formatCondo(updated));
 });
 
 // ─── Areas ────────────────────────────────────────────────────────────────────
 
-router.get("/condominios/:condominioId/areas", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
+router.get("/condominios/:condominioId/areas", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  const db = c.get("db");
   const rows = await db
     .select()
     .from(areasTable)
     .where(eq(areasTable.condominioId, condominioId))
     .orderBy(areasTable.tipo, areasTable.nome);
-  res.json(rows.map(formatArea));
+  return c.json(rows.map(formatArea));
 });
 
-router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento } =
-    req.body as Record<string, unknown>;
-  if (!nome || !tipo) {
-    res.status(400).json({ error: "nome e tipo são obrigatórios" });
-    return;
-  }
-  if (typeof tipo !== "string" || !tipo.trim()) {
-    res.status(400).json({ error: "tipo deve ser uma string não vazia" });
-    return;
-  }
+router.post("/condominios/:condominioId/areas", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento } = body;
+  if (!nome || !tipo) return c.json({ error: "nome e tipo são obrigatórios" }, 400);
+  if (typeof tipo !== "string" || !tipo.trim()) return c.json({ error: "tipo deve ser uma string não vazia" }, 400);
   if (privacidade !== undefined && privacidade !== null && !VALID_PRIVACIDADE.includes(privacidade as string)) {
-    res.status(400).json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` });
-    return;
+    return c.json({ error: `privacidade inválida. Valores: ${VALID_PRIVACIDADE.join(", ")}` }, 400);
   }
   let parsedAndar: number | null = null;
   if (andar != null && andar !== "") {
     parsedAndar = parseInt(andar as string, 10);
     if (isNaN(parsedAndar) || !isFinite(parsedAndar)) {
-      res.status(400).json({ error: "andar deve ser um número inteiro válido" });
-      return;
+      return c.json({ error: "andar deve ser um número inteiro válido" }, 400);
     }
   }
   const [created] = await db
@@ -438,31 +410,25 @@ router.post("/condominios/:condominioId/areas", requireAuth, async (req, res): P
       horarioFechamento: (horarioFechamento as string) ?? null,
     })
     .returning();
-  res.status(201).json(formatArea(created));
+  return c.json(formatArea(created), 201);
 });
 
-router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const areaId = parseInt(req.params.areaId as string, 10);
-  if (isNaN(condominioId) || isNaN(areaId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo } =
-    req.body as Record<string, unknown>;
+router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const areaId = parseInt(c.req.param("areaId")!, 10);
+  if (isNaN(condominioId) || isNaN(areaId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const { nome, tipo, bloco, andar, privacidade, descricao, capacidade, reservavel, horarioAbertura, horarioFechamento, ativo } = body;
   if (tipo !== undefined && (typeof tipo !== "string" || !(tipo as string).trim())) {
-    res.status(400).json({ error: "tipo deve ser uma string não vazia" });
-    return;
+    return c.json({ error: "tipo deve ser uma string não vazia" }, 400);
   }
   if (privacidade !== undefined && privacidade !== null && !VALID_PRIVACIDADE.includes(privacidade as string)) {
-    res.status(400).json({ error: "privacidade inválida" });
-    return;
+    return c.json({ error: "privacidade inválida" }, 400);
   }
   const updateData: Partial<typeof areasTable.$inferInsert> = {};
   if (nome !== undefined) updateData.nome = nome as string;
@@ -481,65 +447,50 @@ router.patch("/condominios/:condominioId/areas/:areaId", requireAuth, async (req
     .set(updateData)
     .where(and(eq(areasTable.id, areaId), eq(areasTable.condominioId, condominioId)))
     .returning();
-  if (!updated) {
-    res.status(404).json({ error: "Área não encontrada neste condomínio" });
-    return;
-  }
-  res.json(formatArea(updated));
+  if (!updated) return c.json({ error: "Área não encontrada neste condomínio" }, 404);
+  return c.json(formatArea(updated));
 });
 
-router.delete("/condominios/:condominioId/areas/:areaId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const areaId = parseInt(req.params.areaId as string, 10);
-  if (isNaN(condominioId) || isNaN(areaId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
+router.delete("/condominios/:condominioId/areas/:areaId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const areaId = parseInt(c.req.param("areaId")!, 10);
+  if (isNaN(condominioId) || isNaN(areaId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
   await db.delete(areasTable).where(and(eq(areasTable.id, areaId), eq(areasTable.condominioId, condominioId)));
-  res.json({ ok: true });
+  return c.json({ ok: true });
 });
 
 // ─── Contratos ────────────────────────────────────────────────────────────────
 
-router.get("/condominios/:condominioId/contratos", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
+router.get("/condominios/:condominioId/contratos", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  const db = c.get("db");
   const rows = await db
     .select()
     .from(contratosCondominioTable)
     .where(eq(contratosCondominioTable.condominioId, condominioId))
     .orderBy(contratosCondominioTable.tipoServico);
-  res.json(rows.map(formatContrato));
+  return c.json(rows.map(formatContrato));
 });
 
-router.post("/condominios/:condominioId/contratos", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = CreateContratoBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.post("/condominios/:condominioId/contratos", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreateContratoBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { tipoServico, empresa, cnpjEmpresa, telefoneEmpresa, emailEmpresa, valorMensal, vigenciaInicio, vigenciaFim, periodicidadeVisita } = parsed.data;
   const [created] = await db
     .insert(contratosCondominioTable)
@@ -556,27 +507,21 @@ router.post("/condominios/:condominioId/contratos", requireAuth, async (req, res
       periodicidadeVisita: periodicidadeVisita ?? null,
     })
     .returning();
-  res.status(201).json(formatContrato(created));
+  return c.json(formatContrato(created), 201);
 });
 
-router.patch("/condominios/:condominioId/contratos/:contratoId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const contratoId = parseInt(req.params.contratoId as string, 10);
-  if (isNaN(condominioId) || isNaN(contratoId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = UpdateContratoBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.patch("/condominios/:condominioId/contratos/:contratoId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const contratoId = parseInt(c.req.param("contratoId")!, 10);
+  if (isNaN(condominioId) || isNaN(contratoId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateContratoBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { tipoServico, empresa, cnpjEmpresa, telefoneEmpresa, emailEmpresa, valorMensal, vigenciaInicio, vigenciaFim, periodicidadeVisita } = parsed.data;
   const [updated] = await db
     .update(contratosCondominioTable)
@@ -593,67 +538,52 @@ router.patch("/condominios/:condominioId/contratos/:contratoId", requireAuth, as
     })
     .where(and(eq(contratosCondominioTable.id, contratoId), eq(contratosCondominioTable.condominioId, condominioId)))
     .returning();
-  if (!updated) {
-    res.status(404).json({ error: "Contrato não encontrado" });
-    return;
-  }
-  res.json(formatContrato(updated));
+  if (!updated) return c.json({ error: "Contrato não encontrado" }, 404);
+  return c.json(formatContrato(updated));
 });
 
-router.delete("/condominios/:condominioId/contratos/:contratoId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const contratoId = parseInt(req.params.contratoId as string, 10);
-  if (isNaN(condominioId) || isNaN(contratoId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
+router.delete("/condominios/:condominioId/contratos/:contratoId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const contratoId = parseInt(c.req.param("contratoId")!, 10);
+  if (isNaN(condominioId) || isNaN(contratoId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
   await db
     .delete(contratosCondominioTable)
     .where(and(eq(contratosCondominioTable.id, contratoId), eq(contratosCondominioTable.condominioId, condominioId)));
-  res.json({ ok: true });
+  return c.json({ ok: true });
 });
 
 // ─── Prestadores ─────────────────────────────────────────────────────────────
 
-router.get("/condominios/:condominioId/prestadores", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
+router.get("/condominios/:condominioId/prestadores", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  const db = c.get("db");
   const rows = await db
     .select()
     .from(prestadoresCondominioTable)
     .where(eq(prestadoresCondominioTable.condominioId, condominioId))
     .orderBy(prestadoresCondominioTable.nome);
-  res.json(rows.map(formatPrestador));
+  return c.json(rows.map(formatPrestador));
 });
 
-router.post("/condominios/:condominioId/prestadores", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = CreatePrestadorBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.post("/condominios/:condominioId/prestadores", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreatePrestadorBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { nome, especialidade, telefone, email, avaliacao, observacoes } = parsed.data;
   const [created] = await db
     .insert(prestadoresCondominioTable)
@@ -667,27 +597,21 @@ router.post("/condominios/:condominioId/prestadores", requireAuth, async (req, r
       observacoes: observacoes ?? null,
     })
     .returning();
-  res.status(201).json(formatPrestador(created));
+  return c.json(formatPrestador(created), 201);
 });
 
-router.patch("/condominios/:condominioId/prestadores/:prestadorId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const prestadorId = parseInt(req.params.prestadorId as string, 10);
-  if (isNaN(condominioId) || isNaN(prestadorId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = UpdatePrestadorBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.patch("/condominios/:condominioId/prestadores/:prestadorId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const prestadorId = parseInt(c.req.param("prestadorId")!, 10);
+  if (isNaN(condominioId) || isNaN(prestadorId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdatePrestadorBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { nome, especialidade, telefone, email, avaliacao, observacoes } = parsed.data;
   const [updated] = await db
     .update(prestadoresCondominioTable)
@@ -701,67 +625,52 @@ router.patch("/condominios/:condominioId/prestadores/:prestadorId", requireAuth,
     })
     .where(and(eq(prestadoresCondominioTable.id, prestadorId), eq(prestadoresCondominioTable.condominioId, condominioId)))
     .returning();
-  if (!updated) {
-    res.status(404).json({ error: "Prestador não encontrado" });
-    return;
-  }
-  res.json(formatPrestador(updated));
+  if (!updated) return c.json({ error: "Prestador não encontrado" }, 404);
+  return c.json(formatPrestador(updated));
 });
 
-router.delete("/condominios/:condominioId/prestadores/:prestadorId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const prestadorId = parseInt(req.params.prestadorId as string, 10);
-  if (isNaN(condominioId) || isNaN(prestadorId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
+router.delete("/condominios/:condominioId/prestadores/:prestadorId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const prestadorId = parseInt(c.req.param("prestadorId")!, 10);
+  if (isNaN(condominioId) || isNaN(prestadorId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
   await db
     .delete(prestadoresCondominioTable)
     .where(and(eq(prestadoresCondominioTable.id, prestadorId), eq(prestadoresCondominioTable.condominioId, condominioId)));
-  res.json({ ok: true });
+  return c.json({ ok: true });
 });
 
 // ─── Documentos ───────────────────────────────────────────────────────────────
 
-router.get("/condominios/:condominioId/documentos", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
+router.get("/condominios/:condominioId/documentos", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  const db = c.get("db");
   const rows = await db
     .select()
     .from(documentosCondominioTable)
     .where(eq(documentosCondominioTable.condominioId, condominioId))
     .orderBy(documentosCondominioTable.tipo);
-  res.json(rows.map(formatDocumento));
+  return c.json(rows.map(formatDocumento));
 });
 
-router.post("/condominios/:condominioId/documentos", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = CreateDocumentoBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.post("/condominios/:condominioId/documentos", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = CreateDocumentoBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { tipo, numeroReferencia, dataEmissao, dataValidade, empresaResponsavel } = parsed.data;
   const [created] = await db
     .insert(documentosCondominioTable)
@@ -774,27 +683,21 @@ router.post("/condominios/:condominioId/documentos", requireAuth, async (req, re
       empresaResponsavel: empresaResponsavel ?? null,
     })
     .returning();
-  res.status(201).json(formatDocumento(created));
+  return c.json(formatDocumento(created), 201);
 });
 
-router.patch("/condominios/:condominioId/documentos/:documentoId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const documentoId = parseInt(req.params.documentoId as string, 10);
-  if (isNaN(condominioId) || isNaN(documentoId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = UpdateDocumentoBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.patch("/condominios/:condominioId/documentos/:documentoId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const documentoId = parseInt(c.req.param("documentoId")!, 10);
+  if (isNaN(condominioId) || isNaN(documentoId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpdateDocumentoBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { tipo, numeroReferencia, dataEmissao, dataValidade, empresaResponsavel } = parsed.data;
   const [updated] = await db
     .update(documentosCondominioTable)
@@ -807,70 +710,52 @@ router.patch("/condominios/:condominioId/documentos/:documentoId", requireAuth, 
     })
     .where(and(eq(documentosCondominioTable.id, documentoId), eq(documentosCondominioTable.condominioId, condominioId)))
     .returning();
-  if (!updated) {
-    res.status(404).json({ error: "Documento não encontrado" });
-    return;
-  }
-  res.json(formatDocumento(updated));
+  if (!updated) return c.json({ error: "Documento não encontrado" }, 404);
+  return c.json(formatDocumento(updated));
 });
 
-router.delete("/condominios/:condominioId/documentos/:documentoId", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  const documentoId = parseInt(req.params.documentoId as string, 10);
-  if (isNaN(condominioId) || isNaN(documentoId)) {
-    res.status(400).json({ error: "IDs inválidos" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
+router.delete("/condominios/:condominioId/documentos/:documentoId", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  const documentoId = parseInt(c.req.param("documentoId")!, 10);
+  if (isNaN(condominioId) || isNaN(documentoId)) return c.json({ error: "IDs inválidos" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
   await db
     .delete(documentosCondominioTable)
     .where(and(eq(documentosCondominioTable.id, documentoId), eq(documentosCondominioTable.condominioId, condominioId)));
-  res.json({ ok: true });
+  return c.json({ ok: true });
 });
 
 // ─── Seguro Predial ───────────────────────────────────────────────────────────
 
-router.get("/condominios/:condominioId/seguro", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
+router.get("/condominios/:condominioId/seguro", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  const db = c.get("db");
   const [record] = await db
     .select()
     .from(seguroPredialTable)
     .where(eq(seguroPredialTable.condominioId, condominioId));
-  if (!record) {
-    res.status(404).json({ error: "Sem registro de seguro" });
-    return;
-  }
-  res.json(formatSeguro(record));
+  if (!record) return c.json({ error: "Sem registro de seguro" }, 404);
+  return c.json(formatSeguro(record));
 });
 
-router.put("/condominios/:condominioId/seguro", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
-  if (user.role === "vistoriador") {
-    res.status(403).json({ error: "Acesso negado." });
-    return;
-  }
-  const parsed = UpsertSeguroPredialBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: "Dados inválidos", details: parsed.error.flatten() });
-    return;
-  }
+router.put("/condominios/:condominioId/seguro", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
+
+  const db = c.get("db");
+  const body = await c.req.json().catch(() => ({}));
+  const parsed = UpsertSeguroPredialBody.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
   const { seguradora, numeroApolice, vigenciaInicio, vigenciaFim, tipoCobertura, valorSegurado, nomeCorretor, telefoneCorretor } = parsed.data;
   const values = {
     condominioId,
@@ -891,19 +776,17 @@ router.put("/condominios/:condominioId/seguro", requireAuth, async (req, res): P
       set: { ...values, updatedAt: new Date() },
     })
     .returning();
-  res.json(formatSeguro(result));
+  return c.json(formatSeguro(result));
 });
 
 // ─── Health ───────────────────────────────────────────────────────────────────
 
-router.get("/condominios/:condominioId/health", requireAuth, async (req, res): Promise<void> => {
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
-  const user = await authorizeCondominioAccess(req, res, condominioId);
-  if (!user) return;
+router.get("/condominios/:condominioId/health", requireAuth, async (c) => {
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
+  const { user, error } = await authorizeCondominioAccess(c, condominioId);
+  if (!user) return error;
+  const db = c.get("db");
   const [contratos, documentos, seguroRows] = await Promise.all([
     db.select().from(contratosCondominioTable).where(eq(contratosCondominioTable.condominioId, condominioId)),
     db.select().from(documentosCondominioTable).where(eq(documentosCondominioTable.condominioId, condominioId)),
@@ -916,39 +799,30 @@ router.get("/condominios/:condominioId/health", requireAuth, async (req, res): P
   const seguro = seguroRows[0];
   const seguroVencido = seguro ? computeVigenciaStatus(seguro.vigenciaFim) === "vencido" : false;
   const seguroAVencer = seguro ? computeVigenciaStatus(seguro.vigenciaFim) === "a_vencer" : false;
-  res.json({ condominioId, contratosVencidos, contratosAVencer, documentosVencidos, documentosAVencer, seguroVencido, seguroAVencer });
+  return c.json({ condominioId, contratosVencidos, contratosAVencer, documentosVencidos, documentosAVencer, seguroVencido, seguroAVencer });
 });
 
 // ─── User <-> Condominio associations ────────────────────────────────────────
 
-router.get("/users/:clerkId/condominios", requireAuth, async (req, res): Promise<void> => {
-  const clerkId = req.params.clerkId as string;
+router.get("/users/:clerkId/condominios", requireAuth, async (c) => {
+  const db = c.get("db");
+  const clerkId = c.req.param("clerkId")!;
   const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (!targetUser) {
-    res.status(404).json({ error: "Usuário não encontrado" });
-    return;
-  }
-  const condoIds = await getUserCondominioIds(targetUser.id);
-  if (condoIds.length === 0) {
-    res.json([]);
-    return;
-  }
+  if (!targetUser) return c.json({ error: "Usuário não encontrado" }, 404);
+  const condoIds = await getUserCondominioIds(db, targetUser.id);
+  if (condoIds.length === 0) return c.json([]);
   const rows = await db.select().from(condominiosTable).where(inArray(condominiosTable.id, condoIds));
-  res.json(rows.map(formatCondo));
+  return c.json(rows.map(formatCondo));
 });
 
-router.post("/users/:clerkId/condominios", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
-  const clerkId = req.params.clerkId as string;
-  const condominioId = parseInt((req.body as Record<string, unknown>).condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "condominioId inválido" });
-    return;
-  }
+router.post("/users/:clerkId/condominios", requireAuth, requireRole("admin"), async (c) => {
+  const db = c.get("db");
+  const clerkId = c.req.param("clerkId")!;
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const condominioId = parseInt(body.condominioId as string, 10);
+  if (isNaN(condominioId)) return c.json({ error: "condominioId inválido" }, 400);
   const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (!targetUser) {
-    res.status(404).json({ error: "Usuário não encontrado" });
-    return;
-  }
+  if (!targetUser) return c.json({ error: "Usuário não encontrado" }, 404);
   const existing = await db
     .select()
     .from(userCondominiosTable)
@@ -956,25 +830,20 @@ router.post("/users/:clerkId/condominios", requireAuth, requireRole("admin"), as
   if (existing.length === 0) {
     await db.insert(userCondominiosTable).values({ userId: targetUser.id, condominioId });
   }
-  res.json({ ok: true });
+  return c.json({ ok: true });
 });
 
-router.delete("/users/:clerkId/condominios/:condominioId", requireAuth, requireRole("admin"), async (req, res): Promise<void> => {
-  const clerkId = req.params.clerkId as string;
-  const condominioId = parseInt(req.params.condominioId as string, 10);
-  if (isNaN(condominioId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
+router.delete("/users/:clerkId/condominios/:condominioId", requireAuth, requireRole("admin"), async (c) => {
+  const db = c.get("db");
+  const clerkId = c.req.param("clerkId")!;
+  const condominioId = parseInt(c.req.param("condominioId")!, 10);
+  if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
   const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (!targetUser) {
-    res.status(404).json({ error: "Usuário não encontrado" });
-    return;
-  }
+  if (!targetUser) return c.json({ error: "Usuário não encontrado" }, 404);
   await db
     .delete(userCondominiosTable)
     .where(and(eq(userCondominiosTable.userId, targetUser.id), eq(userCondominiosTable.condominioId, condominioId)));
-  res.json({ ok: true });
+  return c.json({ ok: true });
 });
 
 export default router;

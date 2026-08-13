@@ -1,21 +1,17 @@
-import { Router } from "express";
-import { db, assetsTable, condominiosTable, areasTable, inspectionsTable } from "@workspace/db";
-import { eq, desc, and } from "drizzle-orm";
+import { Hono } from "hono";
+import { assetsTable, condominiosTable, areasTable, inspectionsTable } from "@workspace/db/worker";
+import { eq, desc } from "drizzle-orm";
+import type { AppEnv } from "../types";
 
-const router = Router();
+const router = new Hono<AppEnv>();
 
-router.get("/public/assets/:assetId", async (req, res): Promise<void> => {
-  const assetId = parseInt(req.params.assetId as string, 10);
-  if (isNaN(assetId)) {
-    res.status(400).json({ error: "ID inválido" });
-    return;
-  }
+router.get("/public/assets/:assetId", async (c) => {
+  const db = c.get("db");
+  const assetId = parseInt(c.req.param("assetId")!, 10);
+  if (isNaN(assetId)) return c.json({ error: "ID inválido" }, 400);
 
   const [asset] = await db.select().from(assetsTable).where(eq(assetsTable.id, assetId));
-  if (!asset) {
-    res.status(404).json({ error: "Ativo não encontrado" });
-    return;
-  }
+  if (!asset) return c.json({ error: "Ativo não encontrado" }, 404);
 
   const [condo] = await db.select().from(condominiosTable).where(eq(condominiosTable.id, asset.condominioId));
   const area = asset.areaId
@@ -35,7 +31,7 @@ router.get("/public/assets/:assetId", async (req, res): Promise<void> => {
     .orderBy(desc(inspectionsTable.createdAt))
     .limit(5);
 
-  res.json({
+  return c.json({
     id: asset.id,
     nome: asset.nome,
     tipo: asset.tipo,
@@ -44,7 +40,7 @@ router.get("/public/assets/:assetId", async (req, res): Promise<void> => {
     descricao: asset.descricao ?? undefined,
     condominioNome: condo?.nome ?? "",
     areaNome: area?.nome ?? undefined,
-    ultimasVistorias: recentInspections.map(i => ({
+    ultimasVistorias: recentInspections.map((i) => ({
       id: i.id,
       tipo: i.tipo,
       urgencia: i.urgencia,

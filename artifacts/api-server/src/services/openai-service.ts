@@ -1,19 +1,5 @@
 import OpenAI from "openai";
 import { logger } from "../lib/logger";
-import fs from "fs";
-
-let openaiClient: OpenAI | null = null;
-
-function getClient(): OpenAI {
-  if (!openaiClient) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) {
-      throw new Error("OPENAI_API_KEY environment variable is not set");
-    }
-    openaiClient = new OpenAI({ apiKey });
-  }
-  return openaiClient;
-}
 
 export interface OpenAIAnalysisResult {
   transcription: string;
@@ -25,14 +11,46 @@ export interface OpenAIAnalysisResult {
   };
 }
 
-export async function transcribeAudio(audioPath: string): Promise<string> {
-  const client = getClient();
-  logger.info({ audioPath }, "Transcribing audio with Whisper");
+// Workers has no filesystem, so the report route now hands us the uploaded
+// audio/image bytes directly (ArrayBuffer, from File.arrayBuffer()) instead
+// of a tmp-dir file path like the old Express/multer version did.
+export interface AudioInput {
+  data: ArrayBuffer;
+  filename: string;
+  mimeType: string;
+}
 
-  const audioStream = fs.createReadStream(audioPath);
+export interface ImageInput {
+  data: ArrayBuffer;
+  filename: string;
+  mimeType: string;
+}
+
+function getClient(apiKey: string | undefined): OpenAI {
+  if (!apiKey) {
+    throw new Error("OPENAI_API_KEY environment variable is not set");
+  }
+  return new OpenAI({ apiKey });
+}
+
+function bufferToBase64(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+export async function transcribeAudio(apiKey: string | undefined, audio: AudioInput): Promise<string> {
+  const client = getClient(apiKey);
+  logger.info({ filename: audio.filename }, "Transcribing audio with Whisper");
+
+  const file = new File([audio.data], audio.filename, { type: audio.mimeType });
 
   const transcription = await client.audio.transcriptions.create({
-    file: audioStream,
+    file,
     model: "whisper-1",
     language: "pt",
   });
@@ -41,22 +59,20 @@ export async function transcribeAudio(audioPath: string): Promise<string> {
   return transcription.text;
 }
 
-export async function analyzeImages(imagePaths: string[]): Promise<string> {
-  if (imagePaths.length === 0) {
+export async function analyzeImages(apiKey: string | undefined, images: ImageInput[]): Promise<string> {
+  if (images.length === 0) {
     return "Nenhuma imagem fornecida para análise.";
   }
 
-  const client = getClient();
-  logger.info({ count: imagePaths.length }, "Analyzing images with Vision");
+  const client = getClient(apiKey);
+  logger.info({ count: images.length }, "Analyzing images with Vision");
 
-  const imageContents: OpenAI.Chat.ChatCompletionContentPart[] = imagePaths.map((p) => {
-    const base64 = fs.readFileSync(p).toString("base64");
-    const ext = p.split(".").pop()?.toLowerCase() ?? "jpeg";
-    const mimeType = ext === "png" ? "image/png" : ext === "gif" ? "image/gif" : ext === "webp" ? "image/webp" : "image/jpeg";
+  const imageContents: OpenAI.Chat.ChatCompletionContentPart[] = images.map((img) => {
+    const base64 = bufferToBase64(img.data);
     return {
       type: "image_url" as const,
       image_url: {
-        url: `data:${mimeType};base64,${base64}`,
+        url: `data:${img.mimeType};base64,${base64}`,
         detail: "high" as const,
       },
     };
@@ -85,15 +101,16 @@ export async function analyzeImages(imagePaths: string[]): Promise<string> {
 }
 
 export async function analyzeInspection(
-  audioPath: string,
-  imagePaths: string[]
+  apiKey: string | undefined,
+  audio: AudioInput,
+  images: ImageInput[]
 ): Promise<OpenAIAnalysisResult> {
   const [transcription, image_analysis] = await Promise.all([
-    transcribeAudio(audioPath),
-    analyzeImages(imagePaths),
+    transcribeAudio(apiKey, audio),
+    analyzeImages(apiKey, images),
   ]);
 
-  const client = getClient();
+  const client = getClient(apiKey);
 
   const structureResponse = await client.chat.completions.create({
     model: "gpt-4o",
