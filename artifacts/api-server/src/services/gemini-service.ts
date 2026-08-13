@@ -49,14 +49,14 @@ export interface ImageInput {
  * newly created Google AI Studio keys get a 404 ("no longer available to
  * new users") on the dated IDs — the same gotcha meucafe's code documents.
  *
- * NOT LIVE-TESTED: this environment has no GOOGLE_GENERATIVE_AI_API_KEY
- * available, so this has been validated for correct wiring/types only, not
- * against the real Gemini API. Test with a real key before relying on it in
- * production — in particular: (1) confirm the AI SDK's `image`-typed
- * content part also accepts audio via a `file`/`data` part correctly for
- * this SDK version (see the `content` array construction below), and (2)
- * confirm transcription quality in pt-BR matches or beats Whisper before
- * fully retiring it — if it doesn't, the old two-call version (Whisper +
+ * LIVE-TESTED (locally, via wrangler dev, with a real
+ * GOOGLE_GENERATIVE_AI_API_KEY): a request with a valid silent WAV file
+ * and no images returned a fully schema-valid JSON response — the
+ * `file`-typed content part for audio alongside `image`-typed parts, the
+ * "-latest" model alias, and the response schema enforcement all work as
+ * designed. NOT yet verified: transcription quality on a real (non-silent)
+ * pt-BR recording — confirm that before fully trusting it over Whisper in
+ * production. If it doesn't hold up, the old two-call version (Whisper +
  * this same Gemini call receiving pre-transcribed text) is one git revert
  * away, not a rewrite.
  */
