@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
-import { transcribeAudio, type AudioInput, type ImageInput } from "../services/openai-service";
-import { generateInspectionReport } from "../services/gemini-service";
+import { generateInspectionReport, type AudioInput, type ImageInput } from "../services/gemini-service";
 import { requireAuth } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 
@@ -55,12 +54,11 @@ function mimeForImageExt(ext: string): string {
 // Note on faithfulness of this port: the original Express route used multer
 // to stream uploads to os.tmpdir(), then read them back off disk. Workers
 // has no filesystem at all, so every file here is read straight into memory
-// as an ArrayBuffer (via File.arrayBuffer()) and handed to the OpenAI/
-// Anthropic SDKs as in-memory blobs — nothing is ever persisted, matching
-// the "ephemeral uploads only" requirement even more directly than before
-// (there's no temp file to clean up in a `finally` block anymore).
+// as an ArrayBuffer (via File.arrayBuffer()) and handed to the Gemini SDK
+// as in-memory blobs — nothing is ever persisted, matching the "ephemeral
+// uploads only" requirement even more directly than before (there's no temp
+// file to clean up in a `finally` block anymore).
 router.post("/generate-report", requireAuth, async (c) => {
-  const openaiKey = c.env.OPENAI_API_KEY;
   const geminiKey = c.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
   let body: Record<string, string | File | (string | File)[]>;
@@ -132,24 +130,23 @@ router.post("/generate-report", requireAuth, async (c) => {
       "Starting inspection analysis",
     );
 
-    // Two calls instead of the old four: Whisper transcribes the audio,
-    // then a single multimodal Gemini call receives that transcription plus
-    // the raw images and produces the fully structured report directly
-    // (see gemini-service.ts — this replaces the old GPT-4o Vision +
-    // GPT-4o "structure it" + Claude Opus "write the report" chain).
-    const transcricao = await transcribeAudio(openaiKey, audioInput);
-    const report = await generateInspectionReport(geminiKey, transcricao, imageInputs, notes);
+    // One call: Gemini's multimodal input takes the raw audio + images +
+    // notes together and returns transcription, image analysis, and the
+    // structured report all at once (see gemini-service.ts — this replaces
+    // the old Whisper + GPT-4o Vision + GPT-4o "structure it" + Claude Opus
+    // "write the report" chain, 4 calls across 2 vendors, with 1).
+    const report = await generateInspectionReport(geminiKey, audioInput, imageInputs, notes);
 
-    return c.json({ ...report, transcricao });
+    return c.json(report);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro desconhecido";
     logger.error({ err: error }, "Failed to generate report");
 
-    if (message.includes("OPENAI_API_KEY") || message.includes("GOOGLE_GENERATIVE_AI_API_KEY")) {
+    if (message.includes("GOOGLE_GENERATIVE_AI_API_KEY")) {
       return c.json(
         {
           error: "Chave de API não configurada",
-          details: "Configure OPENAI_API_KEY e GOOGLE_GENERATIVE_AI_API_KEY como secrets do Worker (wrangler secret put).",
+          details: "Configure GOOGLE_GENERATIVE_AI_API_KEY como secret do Worker (wrangler secret put).",
         },
         500,
       );
