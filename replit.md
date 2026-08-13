@@ -15,7 +15,7 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - **Validation**: Zod (`zod/v4`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
-- **Auth**: Clerk (`@clerk/react`, `@clerk/express`)
+- **Auth**: Supabase Auth (`@supabase/supabase-js`)
 
 ## Key Commands
 
@@ -29,8 +29,8 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 ## Required Secrets
 
-- `CLERK_PUBLISHABLE_KEY` + `VITE_CLERK_PUBLISHABLE_KEY` — Clerk frontend publishable key (same value, two names)
-- `CLERK_SECRET_KEY` — Clerk backend secret key
+- `SUPABASE_URL` + `VITE_SUPABASE_URL` — Supabase project URL (same value, two names)
+- `SUPABASE_ANON_KEY` + `VITE_SUPABASE_ANON_KEY` — Supabase anon/publishable key (same value, two names)
 - `SESSION_SECRET` — Express session secret
 - `OPENAI_API_KEY` — for Whisper transcription and GPT-4o Vision image analysis
 - `CLAUDE_API_KEY` — for generating the professional notice via Claude Opus
@@ -41,7 +41,7 @@ See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and pa
 
 React + Vite mobile-first PWA frontend for professional sindico (building manager) inspection management. Building managers record audio and capture photos during inspections; AI generates professional notices. Also manages condominiums and assets (CMDB). Focused on inspection workflows.
 
-**Authentication:** Clerk configured but bypassed in dev via `VITE_AUTH_BYPASS=true` in `.env.local`. Backend bypass enabled via `AUTH_BYPASS=true` in the api-server dev script. `BypassProviderWithRoutes` skips `ClerkProvider` entirely; `SignOutContext` replaces `useClerk` for sign-out.
+**Authentication:** Supabase Auth configured but bypassed in dev via `VITE_AUTH_BYPASS=true` in `.env.local`. Backend bypass enabled via `AUTH_BYPASS=true` in the api-server dev script. `BypassProviderWithRoutes` skips `SupabaseAuthProviderWithRoutes` entirely; `SignOutContext` replaces `supabase.auth.signOut()` for sign-out.
 
 **Roles:**
 - `vistoriador` — creates inspections, views own history

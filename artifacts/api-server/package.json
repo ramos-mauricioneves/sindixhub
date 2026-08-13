@@ -11,8 +11,7 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.39",
-    "@clerk/backend": "^2.16.0",
-    "@hono/clerk-auth": "^3.0.3",
+    "@supabase/supabase-js": "^2.58.0",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
     "ai": "^7.0.22",

@@ -1,9 +1,15 @@
-import { createContext, useContext, useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, useClerk } from "@clerk/react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { Switch, Route, useLocation, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { supabase } from "@/lib/supabase";
 
 import NotFound from "@/pages/not-found";
 import HomeRedirect from "@/pages/home";
@@ -26,6 +32,12 @@ export const AUTH_BYPASS = import.meta.env.VITE_AUTH_BYPASS === "true";
 export const SignOutContext = createContext<() => void | Promise<void>>(() => {});
 export function useSignOut() { return useContext(SignOutContext); }
 
+// Supabase session context — mirrors what Clerk's useUser()/<Show> used to
+// provide, but backed by supabase.auth.getSession() / onAuthStateChange().
+type SessionState = { session: Session | null; isLoading: boolean };
+const SessionContext = createContext<SessionState>({ session: null, isLoading: true });
+export function useSupabaseSession() { return useContext(SessionContext); }
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -35,50 +47,134 @@ const queryClient = new QueryClient({
   },
 });
 
-function SignInPage() {
+// Wire the api-client's bearer-token getter once. On Workers/Hono the
+// backend reads `Authorization: Bearer <token>` and verifies it via
+// supabase.auth.getUser(jwt) — see artifacts/api-server/src/app.ts.
+setAuthTokenGetter(async () => {
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token ?? null;
+});
+
+function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
+  const [, setLocation] = useLocation();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [signUpDone, setSignUpDone] = useState(false);
+
+  const isSignIn = mode === "sign-in";
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (isSignIn) {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+        setLocation(`${basePath}/`);
+      } else {
+        const { error: signUpError } = await supabase.auth.signUp({ email, password });
+        if (signUpError) throw signUpError;
+        setSignUpDone(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ocorreu um erro. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }}>
-      <SignIn routing="path" path={basePath + "/sign-in"} signUpUrl={basePath + "/sign-up"} />
+    <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }} className="px-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle>{isSignIn ? "Entrar" : "Criar conta"}</CardTitle>
+          <CardDescription>
+            {isSignIn ? "Acesse sua conta SindixHub" : "Crie sua conta SindixHub"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {signUpDone ? (
+            <div className="space-y-4 text-sm text-muted-foreground">
+              <p>Conta criada. Verifique seu e-mail para confirmar o cadastro e depois faça login.</p>
+              <Button className="w-full" onClick={() => setLocation(`${basePath}/sign-in`)}>
+                Ir para login
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  data-testid="input-email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  autoComplete={isSignIn ? "current-password" : "new-password"}
+                  required
+                  minLength={6}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  data-testid="input-password"
+                />
+              </div>
+              {error && <p className="text-sm text-destructive">{error}</p>}
+              <Button type="submit" className="w-full" disabled={isSubmitting} data-testid="button-submit-auth">
+                {isSubmitting ? "Aguarde..." : isSignIn ? "Entrar" : "Cadastrar"}
+              </Button>
+              <p className="text-sm text-muted-foreground text-center">
+                {isSignIn ? (
+                  <>Não tem conta? <a className="underline" href={`${basePath}/sign-up`}>Cadastre-se</a></>
+                ) : (
+                  <>Já tem conta? <a className="underline" href={`${basePath}/sign-in`}>Entrar</a></>
+                )}
+              </p>
+            </form>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
+}
+
+function SignInPage() {
+  return <AuthForm mode="sign-in" />;
 }
 
 function SignUpPage() {
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-  return (
-    <div style={{ display: "flex", justifyContent: "center", marginTop: "2rem" }}>
-      <SignUp routing="path" path={basePath + "/sign-up"} signInUrl={basePath + "/sign-in"} />
-    </div>
-  );
+  return <AuthForm mode="sign-up" />;
 }
 
-function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
+// Equivalent of the old ClerkQueryClientCacheInvalidator: clears the
+// TanStack Query cache whenever the signed-in user changes (sign-in,
+// sign-out, or switching accounts), so stale per-user data doesn't leak
+// across sessions.
+function SupabaseQueryClientCacheInvalidator({ session }: { session: Session | null }) {
   const queryClient = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
-    const unsubscribe = addListener(({ user }) => {
-      const userId = user?.id ?? null;
-      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
-        queryClient.clear();
-      }
-      prevUserIdRef.current = userId;
-    });
-    return unsubscribe;
-  }, [addListener, queryClient]);
+    const userId = session?.user.id ?? null;
+    if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
+      queryClient.clear();
+    }
+    prevUserIdRef.current = userId;
+  }, [session, queryClient]);
 
   return null;
-}
-
-function ClerkSignOutWrapper({ children }: { children: React.ReactNode }) {
-  const { signOut } = useClerk();
-  return (
-    <SignOutContext.Provider value={() => signOut()}>
-      {children}
-    </SignOutContext.Provider>
-  );
 }
 
 function AppRoutes() {
@@ -125,44 +221,40 @@ function BypassProviderWithRoutes() {
   );
 }
 
-function ClerkProviderWithRoutes() {
-  const [, setLocation] = useLocation();
-  const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
-  const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
-  const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+function SupabaseProviderWithRoutes() {
+  const [sessionState, setSessionState] = useState<SessionState>({ session: null, isLoading: true });
 
-  function stripBase(path: string) {
-    return basePath && path.startsWith(basePath) ? path.slice(basePath.length) || "/" : path;
-  }
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      setSessionState({ session: data.session, isLoading: false });
+    });
 
-  if (!clerkPubKey) {
-    return <div>Missing VITE_CLERK_PUBLISHABLE_KEY</div>;
-  }
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSessionState({ session, isLoading: false });
+    });
+
+    return () => subscription.subscription.unsubscribe();
+  }, []);
 
   return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
-      routerPush={(to) => setLocation(stripBase(to))}
-      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
-    >
-      <QueryClientProvider client={queryClient}>
-        <ClerkSignOutWrapper>
-          <ClerkQueryClientCacheInvalidator />
+    <SessionContext.Provider value={sessionState}>
+      <SignOutContext.Provider value={async () => { await supabase.auth.signOut(); }}>
+        <QueryClientProvider client={queryClient}>
+          <SupabaseQueryClientCacheInvalidator session={sessionState.session} />
           <TooltipProvider>
             <AppRoutes />
             <Toaster />
           </TooltipProvider>
-        </ClerkSignOutWrapper>
-      </QueryClientProvider>
-    </ClerkProvider>
+        </QueryClientProvider>
+      </SignOutContext.Provider>
+    </SessionContext.Provider>
   );
 }
 
 function App() {
   return (
     <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-      {AUTH_BYPASS ? <BypassProviderWithRoutes /> : <ClerkProviderWithRoutes />}
+      {AUTH_BYPASS ? <BypassProviderWithRoutes /> : <SupabaseProviderWithRoutes />}
     </WouterRouter>
   );
 }

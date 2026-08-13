@@ -1,12 +1,11 @@
 import { useEffect } from "react";
-import { Show } from "@clerk/react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useGetMe } from "@workspace/api-client-react";
 import { Loader2, Globe } from "lucide-react";
 import { SindixHubIcon } from "@/components/sindixhub-icon";
 import { Button } from "@/components/ui/button";
-import { AUTH_BYPASS } from "@/App";
+import { AUTH_BYPASS, useSupabaseSession } from "@/App";
 
 function LanguageSwitcher() {
   const { i18n } = useTranslation();
@@ -59,17 +58,25 @@ function AuthenticatedRedirect() {
 export default function HomeRedirect() {
   const { t } = useTranslation();
   const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const { session, isLoading } = useSupabaseSession();
 
   if (AUTH_BYPASS) {
     return <AuthenticatedRedirect />;
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (session) {
+    return <AuthenticatedRedirect />;
+  }
+
   return (
-    <>
-      <Show when="signed-in">
-        <AuthenticatedRedirect />
-      </Show>
-      <Show when="signed-out">
         <div className="min-h-[100dvh] flex flex-col bg-background text-foreground">
           <header className="p-4 flex items-center justify-between border-b bg-card">
             <div className="flex items-center gap-2 text-primary font-bold text-xl">
@@ -114,7 +121,5 @@ export default function HomeRedirect() {
             </div>
           </main>
         </div>
-      </Show>
-    </>
   );
 }

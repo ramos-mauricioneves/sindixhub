@@ -87,6 +87,18 @@ Use whatever password you actually set on the `sindixhub_app` role during
 the one-time setup above — don't reuse `sindixhub_local_dev` literally
 unless that's genuinely what you passed to `CREATE ROLE`.
 
+`SUPABASE_URL` / `SUPABASE_ANON_KEY` are only needed when testing the real
+(non-bypass) Supabase Auth login flow locally — `AUTH_BYPASS=true` skips all
+of that exactly as it skipped Clerk before. If you do want to test real
+login locally, add:
+
+```
+SUPABASE_URL=https://pcqufvqoswlwdfzxmuis.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_fDwriq7QZfYttdCPJXvASg_YIcgGci1
+```
+
+(Public-safe values — same ones used client-side — not secrets.)
+
 **`nodejs_compat` is required**, not optional, despite what an earlier draft
 of this doc / `wrangler.toml` comment claimed. `postgres-js`'s `cf/` build
 uses the Workers-native `cloudflare:sockets` API for the actual TCP
@@ -95,14 +107,14 @@ connection, but it still imports `node:events`, `node:buffer`, and
 boot with `Uncaught Error: No such module "node:events"`. This is already
 set in `artifacts/api-server/wrangler.toml`; just don't remove it.
 
-`AUTH_BYPASS=true` skips Clerk entirely (see `src/app.ts` /
+`AUTH_BYPASS=true` skips Supabase Auth entirely (see `src/app.ts` /
 `src/middlewares/requireAuth.ts`) and impersonates a fixed local admin user
-— no live Clerk keys needed for local testing. Leave `CLERK_SECRET_KEY` /
-`CLERK_PUBLISHABLE_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` unset unless you're
-testing those integrations specifically (unset Clerk keys don't matter when
-`AUTH_BYPASS=true`; `GOOGLE_GENERATIVE_AI_API_KEY` is only needed to hit
-`/api/generate-report` — a single Gemini call handles audio transcription,
-image analysis, and report generation together, see
+— no live Supabase Auth login needed for local testing. Leave
+`SUPABASE_URL` / `SUPABASE_ANON_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY` unset
+unless you're testing those integrations specifically (unset Supabase Auth
+vars don't matter when `AUTH_BYPASS=true`; `GOOGLE_GENERATIVE_AI_API_KEY` is
+only needed to hit `/api/generate-report` — a single Gemini call handles
+audio transcription, image analysis, and report generation together, see
 `src/services/gemini-service.ts`; there's no OpenAI/Whisper key anymore).
 
 Then:
@@ -123,6 +135,11 @@ VITE_AUTH_BYPASS=true
 PORT=5173
 BASE_PATH=/
 ```
+
+If you want to test the real (non-bypass) Supabase Auth login flow, also
+add `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` (same public-safe values
+as the backend's `SUPABASE_URL` / `SUPABASE_ANON_KEY` above) and set
+`VITE_AUTH_BYPASS=false`.
 
 Then:
 
@@ -155,6 +172,6 @@ module scope either.
 
 - A second Postgres container/instance — reuse the meucafe stack.
 - Docker changes of any kind.
-- Live Clerk/OpenAI/Anthropic credentials for basic UI + CRUD testing
-  (`AUTH_BYPASS` covers auth; only `/api/generate-report` needs the AI
-  keys).
+- Live Supabase Auth login / OpenAI / Anthropic credentials for basic UI +
+  CRUD testing (`AUTH_BYPASS` covers auth; only `/api/generate-report`
+  needs the AI keys).

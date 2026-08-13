@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { clerkMiddleware, getAuth } from "@hono/clerk-auth";
+import { createClient } from "@supabase/supabase-js";
 import type { AppEnv } from "./types";
 import { getDb } from "./lib/db";
 import routes from "./routes";
@@ -42,8 +42,18 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-// Auth: AUTH_BYPASS short-circuits Clerk entirely (dev/local only), mirroring
-// the original Express app.ts / requireAuth.ts behavior exactly.
+// Auth: AUTH_BYPASS short-circuits Supabase Auth entirely (dev/local only),
+// mirroring the original Express app.ts / requireAuth.ts behavior exactly.
+//
+// Non-bypass path verifies the bearer token from the frontend (set via
+// lib/api-client-react's setAuthTokenGetter, wired to
+// supabase.auth.getSession() in App.tsx) against Supabase's Auth server.
+// We deliberately call auth.getUser(jwt) — a network round-trip to Supabase
+// — rather than doing local JWT/JWKS verification: it's simple, always
+// correct even across key rotation, and this app doesn't have the traffic
+// volume where that round-trip matters. A fresh createClient() is built per
+// request (same reasoning as lib/db.ts: no cross-request caching of
+// request-scoped I/O objects on Workers).
 app.use("*", async (c, next) => {
   const authBypass = c.env.AUTH_BYPASS === "true";
 
@@ -63,19 +73,32 @@ app.use("*", async (c, next) => {
     return;
   }
 
-  return clerkMiddleware({
-    secretKey: c.env.CLERK_SECRET_KEY,
-    publishableKey: c.env.CLERK_PUBLISHABLE_KEY,
-  })(c, async () => {
-    const auth = getAuth(c);
-    c.set(
-      "auth",
-      auth?.userId
-        ? { userId: auth.userId, sessionClaims: (auth.sessionClaims as Record<string, unknown>) ?? {} }
-        : null,
-    );
+  const authHeader = c.req.header("authorization") ?? c.req.header("Authorization");
+  const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1];
+
+  if (!token || !c.env.SUPABASE_URL || !c.env.SUPABASE_ANON_KEY) {
+    c.set("auth", null);
     await next();
+    return;
+  }
+
+  const supabase = createClient(c.env.SUPABASE_URL, c.env.SUPABASE_ANON_KEY);
+  const { data, error } = await supabase.auth.getUser(token);
+
+  if (error || !data.user) {
+    c.set("auth", null);
+    await next();
+    return;
+  }
+
+  c.set("auth", {
+    userId: data.user.id,
+    sessionClaims: {
+      email: data.user.email,
+      name: (data.user.user_metadata as Record<string, unknown> | null)?.name,
+    },
   });
+  await next();
 });
 
 app.route("/api", routes);

@@ -6,6 +6,13 @@ import { logger } from "../lib/logger";
 
 export type UserRole = "admin" | "sindico" | "vistoriador";
 
+// NOTE: `clerkId` (column `clerk_id`) is a historical name kept as-is —
+// renaming it would cascade into generated OpenAPI types
+// (lib/api-zod/src/generated/types/*.ts), the api-client, and frontend
+// data-testid/UI code (e.g. artifacts/vistoria-app/src/pages/admin.tsx).
+// Since the Clerk → Supabase Auth migration, this column holds the Supabase
+// Auth user's UUID (`auth.users.id`) instead of a Clerk user ID —
+// semantically it's just "external auth provider's user id" now.
 export const BYPASS_CLERK_ID = "bypass-admin";
 
 // Note: unlike the Express version, this no longer imports a module-level
