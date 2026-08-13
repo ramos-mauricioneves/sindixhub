@@ -98,9 +98,11 @@ set in `artifacts/api-server/wrangler.toml`; just don't remove it.
 `AUTH_BYPASS=true` skips Clerk entirely (see `src/app.ts` /
 `src/middlewares/requireAuth.ts`) and impersonates a fixed local admin user
 — no live Clerk keys needed for local testing. Leave `CLERK_SECRET_KEY` /
-`CLERK_PUBLISHABLE_KEY` / `OPENAI_API_KEY` / `CLAUDE_API_KEY` unset unless
-you're testing those integrations specifically (unset Clerk keys don't
-matter when `AUTH_BYPASS=true`; OPENAI/CLAUDE keys are only needed to hit
+`CLERK_PUBLISHABLE_KEY` / `OPENAI_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY`
+unset unless you're testing those integrations specifically (unset Clerk keys
+don't matter when `AUTH_BYPASS=true`; OPENAI is only Whisper transcription
+now, GOOGLE_GENERATIVE_AI_API_KEY is Gemini for image analysis + report
+generation — see `src/services/gemini-service.ts` — both are only needed to hit
 `/api/generate-report`).
 
 Then:

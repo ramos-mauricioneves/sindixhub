@@ -30,15 +30,27 @@ AUTH_BYPASS = "false"
 # CLERK_SECRET_KEY    — Clerk backend secret key
 # CLERK_PUBLISHABLE_KEY — Clerk publishable key (also needed client-side, but
 #                       @hono/clerk-auth reads it from this binding too)
-# OPENAI_API_KEY      — for Whisper transcription + GPT-4o Vision analysis
-# CLAUDE_API_KEY      — for Anthropic report generation
+# OPENAI_API_KEY      — Whisper only (audio transcription). Image analysis +
+#                       report generation moved to Gemini — see
+#                       src/services/gemini-service.ts.
+# GOOGLE_GENERATIVE_AI_API_KEY — Gemini (image analysis + structured report
+#                       generation, single multimodal call). Same env var
+#                       name convention as this org's other Workers app
+#                       (meucafe/brew-buddy-ia) for consistency.
 #
 # Run once per environment:
 #   wrangler secret put DATABASE_URL
 #   wrangler secret put CLERK_SECRET_KEY
 #   wrangler secret put CLERK_PUBLISHABLE_KEY
 #   wrangler secret put OPENAI_API_KEY
-#   wrangler secret put CLAUDE_API_KEY
+#   wrangler secret put GOOGLE_GENERATIVE_AI_API_KEY
+
+# ─── CORS ───────────────────────────────────────────────────────────────────
+# ALLOWED_ORIGINS is a plain (non-secret) var: comma-separated list of
+# origins allowed to make credentialed requests (see src/app.ts). Set this
+# once the Pages custom domain is known, e.g.:
+# [vars]
+# ALLOWED_ORIGINS = "https://app.yourdomain.com,https://sindixhub.pages.dev"
 
 # ─── Routes / custom domain ────────────────────────────────────────────────
 # Uncomment and set once a custom domain is attached to this Worker in the

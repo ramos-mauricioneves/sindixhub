@@ -10,15 +10,17 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.89.0",
+    "@ai-sdk/google": "^4.0.39",
     "@clerk/backend": "^2.16.0",
     "@hono/clerk-auth": "^3.0.3",
     "@workspace/api-zod": "workspace:*",
     "@workspace/db": "workspace:*",
+    "ai": "^7.0.22",
     "drizzle-orm": "catalog:",
     "hono": "^4.9.10",
     "openai": "^6.34.0",
-    "postgres": "^3.4.5"
+    "postgres": "^3.4.5",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20251111.0",

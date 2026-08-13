@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import type { AppEnv } from "../types";
-import { analyzeInspection, type AudioInput, type ImageInput } from "../services/openai-service";
-import { generateReport } from "../services/claude-service";
+import { transcribeAudio, type AudioInput, type ImageInput } from "../services/openai-service";
+import { generateInspectionReport } from "../services/gemini-service";
+import { requireAuth } from "../middlewares/requireAuth";
 import { logger } from "../lib/logger";
 
 const router = new Hono<AppEnv>();
@@ -58,9 +59,9 @@ function mimeForImageExt(ext: string): string {
 // Anthropic SDKs as in-memory blobs — nothing is ever persisted, matching
 // the "ephemeral uploads only" requirement even more directly than before
 // (there's no temp file to clean up in a `finally` block anymore).
-router.post("/generate-report", async (c) => {
+router.post("/generate-report", requireAuth, async (c) => {
   const openaiKey = c.env.OPENAI_API_KEY;
-  const claudeKey = c.env.CLAUDE_API_KEY;
+  const geminiKey = c.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
   let body: Record<string, string | File | (string | File)[]>;
   try {
@@ -131,23 +132,24 @@ router.post("/generate-report", async (c) => {
       "Starting inspection analysis",
     );
 
-    const analysisResult = await analyzeInspection(openaiKey, audioInput, imageInputs);
-    const report = await generateReport(claudeKey, analysisResult, notes);
+    // Two calls instead of the old four: Whisper transcribes the audio,
+    // then a single multimodal Gemini call receives that transcription plus
+    // the raw images and produces the fully structured report directly
+    // (see gemini-service.ts — this replaces the old GPT-4o Vision +
+    // GPT-4o "structure it" + Claude Opus "write the report" chain).
+    const transcricao = await transcribeAudio(openaiKey, audioInput);
+    const report = await generateInspectionReport(geminiKey, transcricao, imageInputs, notes);
 
-    return c.json({
-      ...report,
-      transcricao: analysisResult.transcription,
-      analise_imagens: analysisResult.image_analysis,
-    });
+    return c.json({ ...report, transcricao });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erro desconhecido";
     logger.error({ err: error }, "Failed to generate report");
 
-    if (message.includes("OPENAI_API_KEY") || message.includes("CLAUDE_API_KEY")) {
+    if (message.includes("OPENAI_API_KEY") || message.includes("GOOGLE_GENERATIVE_AI_API_KEY")) {
       return c.json(
         {
           error: "Chave de API não configurada",
-          details: "Configure OPENAI_API_KEY e CLAUDE_API_KEY como secrets do Worker (wrangler secret put).",
+          details: "Configure OPENAI_API_KEY e GOOGLE_GENERATIVE_AI_API_KEY como secrets do Worker (wrangler secret put).",
         },
         500,
       );
