@@ -11,6 +11,7 @@ import dashboardRouter from "./dashboard";
 import assembleiasRouter from "./assembleias";
 import prestadoresRouter from "./prestadores";
 import empresasRouter from "./empresas";
+import acionamentosRouter from "./acionamentos";
 
 const router = new Hono<AppEnv>();
 
@@ -25,5 +26,6 @@ router.route("/", dashboardRouter);
 router.route("/", assembleiasRouter);
 router.route("/", prestadoresRouter);
 router.route("/", empresasRouter);
+router.route("/", acionamentosRouter);
 
 export default router;
