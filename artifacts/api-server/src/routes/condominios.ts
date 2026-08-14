@@ -57,6 +57,7 @@ function computeDocumentoStatus(dataValidade: string | null | undefined): "valid
 function formatCondo(c: typeof condominiosTable.$inferSelect) {
   return {
     id: c.id,
+    empresaId: c.empresaId,
     nome: c.nome,
     cnpj: c.cnpj ?? null,
     tipoCondominio: c.tipoCondominio,

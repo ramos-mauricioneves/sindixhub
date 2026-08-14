@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api-fetch";
 import { useTranslation } from "react-i18next";
 import {
   Mic, Square, Camera, X, Check, Loader2, Save, AlertCircle, Building2,
@@ -130,6 +131,24 @@ export default function NovaVistoriaPage() {
   const [editedComunicado, setEditedComunicado] = useState("");
   const [loadingMessage, setLoadingMessage] = useState("");
   const [isSavingOffline, setIsSavingOffline] = useState(false);
+  const [confirmarAcionamento, setConfirmarAcionamento] = useState(true);
+
+  // Prestador suggestion (multi-tenant acionamento feature, Phase 3/4):
+  // only meaningful once a single asset is selected (assetId, the
+  // condomínio-wide selector — not the per-área multi-select) and the AI
+  // report has been generated. Uses apiFetch directly since
+  // /api/prestadores/sugestao isn't in the generated api-client-react yet
+  // (see src/lib/api-fetch.ts).
+  const assetIdNum = assetId ? parseInt(assetId, 10) : undefined;
+  const condominioIdNum2 = condominioId ? parseInt(condominioId, 10) : undefined;
+  const { data: sugestao } = useQuery({
+    queryKey: ["prestadores-sugestao", condominioIdNum2, assetIdNum],
+    queryFn: () => apiFetch<{ suggestions: { prestadorId: number; nome: string; categoria: string | null; telefone: string | null }[] }>(
+      `/api/prestadores/sugestao?condominioId=${condominioIdNum2}&assetId=${assetIdNum}`,
+    ),
+    enabled: !!report && !!condominioIdNum2 && !!assetIdNum,
+  });
+  const prestadorSugerido = sugestao?.suggestions?.[0];
 
   useEffect(() => {
     return () => {
@@ -343,8 +362,25 @@ export default function NovaVistoriaPage() {
         selectedAssetIds: selectedAssetsArray.length > 0 ? selectedAssetsArray.join(",") : undefined,
       }
     }, {
-      onSuccess: () => {
+      onSuccess: async (saved: any) => {
         queryClient.invalidateQueries({ queryKey: getListInspectionsQueryKey() });
+
+        // If the user accepted a suggested prestador, confirm the
+        // acionamento now that we have the real inspection id. Best-effort:
+        // the inspection itself is already saved either way, so a failure
+        // here shouldn't block navigation — just skip silently and let the
+        // user acionar manually later from the vistoria's detail page.
+        if (confirmarAcionamento && prestadorSugerido && saved?.id) {
+          try {
+            await apiFetch(`/api/inspections/${saved.id}/acionamentos`, {
+              method: "POST",
+              body: JSON.stringify({ prestadorId: prestadorSugerido.prestadorId, assetId: assetIdNum }),
+            });
+          } catch {
+            // non-fatal — see comment above
+          }
+        }
+
         toast({ title: t("novaVistoria.savedSuccess"), description: t("novaVistoria.savedSuccessDesc") });
         setLocation("/app/historico");
       },
@@ -753,6 +789,23 @@ export default function NovaVistoriaPage() {
                 <p className="text-sm">{report.acao}</p>
               </div>
             </div>
+            {prestadorSugerido && (
+              <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-200 p-4 rounded-md">
+                <Wrench className="h-5 w-5 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="font-semibold text-sm">Prestador sugerido para o reparo</p>
+                  <p className="text-sm">
+                    {prestadorSugerido.nome}
+                    {prestadorSugerido.categoria ? ` (${prestadorSugerido.categoria})` : ""}
+                    {prestadorSugerido.telefone ? ` — ${prestadorSugerido.telefone}` : ""}
+                  </p>
+                  <label className="flex items-center gap-2 mt-2 text-sm cursor-pointer">
+                    <Checkbox checked={confirmarAcionamento} onCheckedChange={(v) => setConfirmarAcionamento(v === true)} />
+                    Acionar este prestador ao salvar a vistoria
+                  </label>
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="comunicado" className="text-base font-semibold">{t("novaVistoria.residentNotice")}</Label>
               <p className="text-sm text-muted-foreground">{t("novaVistoria.editBeforeSave")}</p>

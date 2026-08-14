@@ -21,6 +21,9 @@ function formatUser(u: typeof usersTable.$inferSelect, condominioIds: number[]) 
     role: u.role,
     condominio: u.condominio,
     condominioIds,
+    empresaId: u.empresaId,
+    prestadorId: u.prestadorId,
+    escopoEmpresa: u.escopoEmpresa,
     createdAt: u.createdAt,
   };
 }

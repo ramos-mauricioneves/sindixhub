@@ -65,7 +65,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const role = user.role;
 
   const navItems = [];
-  if (role === "admin") {
+  // Cast: "global_admin" isn't in the generated UserProfileRole union yet
+  // (lib/api-spec/openapi.yaml wasn't regenerated for the multi-tenant
+  // migration) even though the backend can genuinely return it now.
+  if ((role as string) === "global_admin") {
+    navItems.push({ label: "Empresas", path: "/app/admin/empresas", icon: Building2 });
+    navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
+    navItems.push({ label: t("nav.condominios"), path: "/app/condominios", icon: Building2 });
+    navItems.push({ label: t("nav.usuarios"), path: "/app/admin", icon: Users });
+  } else if (role === "admin") {
     navItems.push({ label: t("nav.dashboard"), path: "/app/dashboard", icon: LayoutDashboard });
     navItems.push({ label: t("nav.vistorias"), path: "/app/historico", icon: ClipboardCheck });
     navItems.push({ label: t("nav.novaVistoria"), path: "/app/nova-vistoria", icon: FileText });

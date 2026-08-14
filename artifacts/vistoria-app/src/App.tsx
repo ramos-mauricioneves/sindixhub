@@ -17,6 +17,7 @@ import NovaVistoriaPage from "@/pages/nova-vistoria";
 import HistoricoPage from "@/pages/historico";
 import VistoriaDetailPage from "@/pages/vistoria-detail";
 import AdminPage from "@/pages/admin";
+import AdminEmpresasPage from "@/pages/admin-empresas";
 import CondominiosPage from "@/pages/condominios";
 import DashboardPage from "@/pages/dashboard";
 import AtivosPage from "@/pages/ativos";
@@ -193,6 +194,7 @@ function AppRoutes() {
               <Route path="/app/historico" component={HistoricoPage} />
               <Route path="/app/vistoria/:id" component={VistoriaDetailPage} />
               <Route path="/app/admin" component={AdminPage} />
+              <Route path="/app/admin/empresas" component={AdminEmpresasPage} />
               <Route path="/app/condominios" component={CondominiosPage} />
               <Route path="/app/ativos" component={AtivosPage} />
               <Route path="/app/ativos/etiquetas" component={EtiquetasPage} />

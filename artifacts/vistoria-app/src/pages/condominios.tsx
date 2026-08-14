@@ -10,15 +10,14 @@ import {
   useListAreas, useCreateArea, useUpdateArea, useDeleteArea,
   useListAssets, useCreateAsset, useUpdateAsset, useDeleteAsset,
   useListContratos, useCreateContrato, useUpdateContrato, useDeleteContrato,
-  useListPrestadores, useCreatePrestador, useUpdatePrestador, useDeletePrestador,
   useListDocumentos, useCreateDocumento, useUpdateDocumento, useDeleteDocumento,
   useGetSeguroPredial, useUpsertSeguroPredial,
   useGetCondominioHealth,
   Condominio, CondominioBody, Area, AreaBodyPrivacidade, AreaPrivacidade,
   Asset, AssetBody,
-  ContratoCondominio, PrestadorCondominio, DocumentoCondominio,
+  ContratoCondominio, DocumentoCondominio,
   getListCondominiosQueryKey, getListAreasQueryKey, getListAssetsQueryKey,
-  getListContratosQueryKey, getListPrestadoresQueryKey,
+  getListContratosQueryKey,
   getListDocumentosQueryKey, getGetSeguroPredialQueryKey, getGetCondominioHealthQueryKey,
 } from "@workspace/api-client-react";
 import {
@@ -26,7 +25,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AREA_CATEGORIES, AreaTemplate, KNOWN_AREA_TIPOS } from "@/lib/area-templates";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
+import { apiFetch } from "@/lib/api-fetch";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,10 +66,6 @@ const PRIVACIDADE_COLORS: Record<string, string> = {
 
 const TIPO_SERVICO_OPTIONS = [
   "elevadores", "portoes", "jardinagem", "dedetizacao", "cftv", "glp", "piscina", "limpeza", "seguranca", "outros",
-] as const;
-
-const ESPECIALIDADE_OPTIONS = [
-  "eletrica", "hidraulica", "pintura", "serralheria", "marcenaria", "ti", "outros",
 ] as const;
 
 const TIPO_DOCUMENTO_OPTIONS = [
@@ -1153,9 +1149,41 @@ function ContratosPanel({ condominioId }: { condominioId: number }) {
 }
 
 // ─── PrestadoresPanel ─────────────────────────────────────────────────────────
+// Multi-tenant model (see LOCAL_DEV.md / migration notes): a prestador is a
+// master record at the empresa level; what this panel shows/edits is the
+// per-condomínio ASSOCIATION (categoria/telefone/email here override the
+// master's when set, vigência/valor are condomínio-specific). Uses apiFetch
+// directly — /api/condominios/:id/prestadores's shape changed with this
+// migration and the generated api-client-react hooks weren't regenerated
+// for it (see src/lib/api-fetch.ts).
 
-type PrestadorForm = { nome: string; especialidade: string; telefone: string; email: string; avaliacao: string; observacoes: string; };
-const emptyPrestadorForm = (): PrestadorForm => ({ nome: "", especialidade: "", telefone: "", email: "", avaliacao: "", observacoes: "" });
+// Mirrors SERVICO_CATEGORIAS in lib/db/src/schema/assets.ts — kept as a
+// small local duplicate since the frontend can't import the backend
+// package's schema module.
+const SERVICO_CATEGORIAS = [
+  "elevador", "hidraulica", "eletrica", "pintura", "jardinagem",
+  "portaria_seguranca", "limpeza", "ar_condicionado", "estrutural_civil",
+  "incendio_ppci", "dedetizacao", "outro",
+] as const;
+
+interface PrestadorAssociacao {
+  id: number;
+  prestadorId: number;
+  condominioId: number;
+  nome: string;
+  categoria: string | null;
+  telefone: string | null;
+  email: string | null;
+  vigenciaInicio: string | null;
+  vigenciaFim: string | null;
+  valorMensal: number | null;
+  avaliacao: number | null;
+  observacoes: string | null;
+  ativo: boolean;
+}
+
+type PrestadorForm = { nome: string; categoria: string; telefone: string; email: string; avaliacao: string; observacoes: string; };
+const emptyPrestadorForm = (): PrestadorForm => ({ nome: "", categoria: "", telefone: "", email: "", avaliacao: "", observacoes: "" });
 
 function PrestadoresPanel({ condominioId }: { condominioId: number }) {
   const { t } = useTranslation();
@@ -1165,31 +1193,64 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<PrestadorForm>(emptyPrestadorForm());
 
-  const { data: prestadores, isPending } = useListPrestadores(condominioId, { query: { queryKey: getListPrestadoresQueryKey(condominioId) } });
-  const createPrestador = useCreatePrestador();
-  const updatePrestador = useUpdatePrestador();
-  const deletePrestador = useDeletePrestador();
+  const queryKey = ["condominios", condominioId, "prestadores"];
+  const { data: prestadores, isPending } = useQuery({
+    queryKey,
+    queryFn: () => apiFetch<PrestadorAssociacao[]>(`/api/condominios/${condominioId}/prestadores`),
+  });
 
   const openNew = () => { setForm(emptyPrestadorForm()); setEditingId(null); setDialogOpen(true); };
-  const openEdit = (p: PrestadorCondominio) => {
-    setForm({ nome: p.nome, especialidade: p.especialidade ?? "", telefone: p.telefone ?? "", email: p.email ?? "", avaliacao: p.avaliacao?.toString() ?? "", observacoes: p.observacoes ?? "" });
+  const openEdit = (p: PrestadorAssociacao) => {
+    setForm({ nome: p.nome, categoria: p.categoria ?? "", telefone: p.telefone ?? "", email: p.email ?? "", avaliacao: p.avaliacao?.toString() ?? "", observacoes: p.observacoes ?? "" });
     setEditingId(p.id);
     setDialogOpen(true);
   };
 
-  const handleSave = () => {
-    const payload = { nome: form.nome.trim(), especialidade: form.especialidade || undefined, telefone: form.telefone || undefined, email: form.email || undefined, avaliacao: form.avaliacao ? parseInt(form.avaliacao) : undefined, observacoes: form.observacoes || undefined };
-    const onSuccess = () => { qc.invalidateQueries({ queryKey: getListPrestadoresQueryKey(condominioId) }); toast({ title: t("condominios.prestadorSaved") }); setDialogOpen(false); };
-    const onError = () => toast({ title: t("condominios.errorSaving"), variant: "destructive" });
-    if (editingId) {
-      updatePrestador.mutate({ condominioId, prestadorId: editingId, data: payload }, { onSuccess, onError });
-    } else {
-      createPrestador.mutate({ condominioId, data: payload }, { onSuccess, onError });
-    }
-  };
+  const onSuccess = () => { qc.invalidateQueries({ queryKey }); toast({ title: t("condominios.prestadorSaved") }); setDialogOpen(false); };
+  const onError = (e: Error) => toast({ title: t("condominios.errorSaving"), description: e.message, variant: "destructive" });
 
-  const espLabel = (v: string) => {
-    const map: Record<string, string> = { eletrica: t("condominios.prestadorEspEletrica"), hidraulica: t("condominios.prestadorEspHidraulica"), pintura: t("condominios.prestadorEspPintura"), serralheria: t("condominios.prestadorEspSerralheria"), marcenaria: t("condominios.prestadorEspMarcenaria"), ti: t("condominios.prestadorEspTi"), outros: t("condominios.prestadorEspOutros") };
+  const createPrestador = useMutation({
+    mutationFn: () => apiFetch(`/api/condominios/${condominioId}/prestadores`, {
+      method: "POST",
+      body: JSON.stringify({
+        nome: form.nome.trim(),
+        categoria: form.categoria || undefined,
+        telefone: form.telefone || undefined,
+        email: form.email || undefined,
+        avaliacao: form.avaliacao ? parseInt(form.avaliacao) : undefined,
+        observacoes: form.observacoes || undefined,
+      }),
+    }),
+    onSuccess, onError,
+  });
+  const updatePrestador = useMutation({
+    mutationFn: () => apiFetch(`/api/condominios/${condominioId}/prestadores/${editingId}`, {
+      method: "PATCH",
+      body: JSON.stringify({
+        categoria: form.categoria || null,
+        telefone: form.telefone || null,
+        email: form.email || null,
+        avaliacao: form.avaliacao ? parseInt(form.avaliacao) : null,
+        observacoes: form.observacoes || null,
+      }),
+    }),
+    onSuccess, onError,
+  });
+  const deletePrestador = useMutation({
+    mutationFn: (associacaoId: number) => apiFetch(`/api/condominios/${condominioId}/prestadores/${associacaoId}`, { method: "DELETE" }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey }); toast({ title: t("condominios.prestadorDeleted") }); },
+    onError,
+  });
+
+  const handleSave = () => { if (editingId) updatePrestador.mutate(); else createPrestador.mutate(); };
+
+  const categoriaLabel = (v: string) => {
+    const map: Record<string, string> = {
+      elevador: "Elevador", hidraulica: "Hidráulica", eletrica: "Elétrica", pintura: "Pintura",
+      jardinagem: "Jardinagem", portaria_seguranca: "Portaria/Segurança", limpeza: "Limpeza",
+      ar_condicionado: "Ar-condicionado", estrutural_civil: "Estrutural/Civil", incendio_ppci: "Incêndio/PPCI",
+      dedetizacao: "Dedetização", outro: "Outro",
+    };
     return map[v] || v;
   };
 
@@ -1214,7 +1275,7 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-medium text-sm">{p.nome}</span>
-                    {p.especialidade && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{espLabel(p.especialidade)}</span>}
+                    {p.categoria && <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">{categoriaLabel(p.categoria)}</span>}
                     {p.avaliacao != null && (
                       <span className="flex items-center gap-0.5">
                         {Array.from({ length: 5 }, (_, i) => <Star key={i} className={`h-3 w-3 ${i < p.avaliacao! ? "fill-amber-400 text-amber-400" : "text-muted-foreground"}`} />)}
@@ -1229,7 +1290,7 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button onClick={() => openEdit(p)} className="p-1 text-muted-foreground hover:text-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-                  <button onClick={() => deletePrestador.mutate({ condominioId, prestadorId: p.id }, { onSuccess: () => { qc.invalidateQueries({ queryKey: getListPrestadoresQueryKey(condominioId) }); toast({ title: t("condominios.prestadorDeleted") }); } })} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => deletePrestador.mutate(p.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
             ))}
@@ -1242,16 +1303,17 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label>{t("condominios.prestadorNome")} *</Label>
-              <Input value={form.nome} onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))} />
+              <Input value={form.nome} onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))} disabled={!!editingId} />
+              {editingId && <p className="text-xs text-muted-foreground">O nome pertence ao cadastro do prestador (nível empresa) e não é editável aqui.</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>{t("condominios.prestadorEspecialidade")}</Label>
-                <Select value={form.especialidade || "__none__"} onValueChange={(v) => setForm(f => ({ ...f, especialidade: v === "__none__" ? "" : v }))}>
+                <Label>Categoria de serviço</Label>
+                <Select value={form.categoria || "__none__"} onValueChange={(v) => setForm(f => ({ ...f, categoria: v === "__none__" ? "" : v }))}>
                   <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">—</SelectItem>
-                    {ESPECIALIDADE_OPTIONS.map(v => <SelectItem key={v} value={v}>{espLabel(v)}</SelectItem>)}
+                    {SERVICO_CATEGORIAS.map(v => <SelectItem key={v} value={v}>{categoriaLabel(v)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
