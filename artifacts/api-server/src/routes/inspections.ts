@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { inspectionsTable, userCondominiosTable } from "@workspace/db/worker";
+import { inspectionsTable, userCondominiosTable, condominiosTable } from "@workspace/db/worker";
 import { eq, desc, and, inArray } from "drizzle-orm";
 import { requireAuth, upsertUser } from "../middlewares/requireAuth";
 import { SaveInspectionBody, ListInspectionsQueryParams } from "@workspace/api-zod";
@@ -32,10 +32,28 @@ router.get("/inspections", requireAuth, async (c) => {
 
   const conditions: any[] = [];
 
-  if (user.role === "vistoriador") {
+  // global_admin: no condition — sees inspections across every empresa,
+  // same as before empresas existed. Every other role must be scoped:
+  // previously "admin" fell through with zero conditions too (an implicit
+  // "sees everything" that used to be correct when there was only one
+  // tenant) — now that would leak other empresas' inspections, so
+  // admin/escopoEmpresa get explicitly restricted to their own empresa's
+  // condomínios below, same as sindico is restricted to their assigned ones.
+  if (user.role === "vistoriador" && !user.escopoEmpresa) {
     conditions.push(eq(inspectionsTable.createdByClerkId, auth.userId));
-  } else if (user.role === "sindico") {
+  } else if (user.role === "sindico" && !user.escopoEmpresa) {
     const condoIds = await getUserCondominioIds(db, user.id);
+    if (condoIds.length === 0) {
+      return c.json({ inspections: [], total: 0, page, limit });
+    }
+    conditions.push(inArray(inspectionsTable.condominioId, condoIds));
+  } else if (user.role !== "global_admin") {
+    // admin, or any role with escopoEmpresa=true: restrict to own empresa.
+    if (!user.empresaId) {
+      return c.json({ inspections: [], total: 0, page, limit });
+    }
+    const empresaCondos = await db.select({ id: condominiosTable.id }).from(condominiosTable).where(eq(condominiosTable.empresaId, user.empresaId));
+    const condoIds = empresaCondos.map((c) => c.id);
     if (condoIds.length === 0) {
       return c.json({ inspections: [], total: 0, page, limit });
     }

@@ -183,8 +183,28 @@ async function getUserCondominioIds(db: AppEnv["Variables"]["db"], userId: numbe
 
 /**
  * Resolves the authenticated user and verifies they are authorized to access
- * the given condominioId. Admins have unrestricted access; all other roles
- * must be explicitly associated with the condominium in user_condominios.
+ * the given condominioId, in this order:
+ *
+ *  1. global_admin — SindixHub's own platform staff. Bypasses everything,
+ *     unconditionally. Has no empresaId.
+ *  2. Empresa boundary — every OTHER role must belong to the same empresa
+ *     as the target condomínio, or access is denied outright regardless of
+ *     role. This is what actually prevents cross-tenant data leakage (e.g.
+ *     a guessed/leaked condominioId from a different empresa) — it runs
+ *     before any role-specific bypass below.
+ *  3. admin — unrestricted within their own empresa (narrowed from
+ *     "unrestricted everywhere" now that empresas exist).
+ *  4. escopoEmpresa — sindico/vistoriador users flagged as empresa-wide
+ *     internal staff get the same unrestricted-within-empresa access as
+ *     admin, without needing a user_condominios row per condomínio.
+ *  5. Fallback — must be explicitly associated with the condomínio via
+ *     user_condominios (the original, still-supported "scoped to just this
+ *     one condomínio" case).
+ *
+ * (Prestador-linked user access — a user whose prestadorId grants them
+ * access via prestador_condominios associations — is added in Phase 2 of
+ * the multi-tenant migration, once the prestadores tables exist.)
+ *
  * Returns the user record on success, or null if authorization fails (the
  * appropriate 403 response is written to the passed-in `err` holder before
  * returning null — callers must check for null and return that response).
@@ -199,7 +219,17 @@ async function authorizeCondominioAccess(
   const name = auth.sessionClaims?.["name"] as string | undefined;
   const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  if (user.role === "admin") return { user, error: null };
+  if (user.role === "global_admin") return { user, error: null };
+
+  const [condo] = await db.select({ empresaId: condominiosTable.empresaId }).from(condominiosTable).where(eq(condominiosTable.id, condominioId));
+  if (!condo) {
+    return { user: null, error: c.json({ error: "Condomínio não encontrado." }, 404) };
+  }
+  if (user.empresaId === null || user.empresaId !== condo.empresaId) {
+    return { user: null, error: c.json({ error: "Acesso negado. Você não tem permissão para este condomínio." }, 403) };
+  }
+
+  if (user.role === "admin" || user.escopoEmpresa) return { user, error: null };
 
   const userCondoIds = await getUserCondominioIds(db, user.id);
   if (!userCondoIds.includes(condominioId)) {
@@ -218,8 +248,15 @@ router.get("/condominios", requireAuth, async (c) => {
   const name = auth.sessionClaims?.["name"] as string | undefined;
   const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  if (user.role === "admin") {
+  if (user.role === "global_admin") {
     const all = await db.select().from(condominiosTable).orderBy(condominiosTable.nome);
+    return c.json(all.map(formatCondo));
+  }
+
+  if (user.role === "admin" || user.escopoEmpresa) {
+    const all = user.empresaId
+      ? await db.select().from(condominiosTable).where(eq(condominiosTable.empresaId, user.empresaId)).orderBy(condominiosTable.nome)
+      : [];
     return c.json(all.map(formatCondo));
   }
 
@@ -255,7 +292,20 @@ router.post("/condominios", requireAuth, requireRole("admin", "sindico"), async 
   if (tipoCondominio && !VALID_TIPO_CONDOMINIO.includes(tipoCondominio as string)) {
     return c.json({ error: "tipoCondominio inválido" }, 400);
   }
+
+  // global_admin has no empresaId of their own (platform staff, not tied to
+  // a tenant) — they must say which empresa this condomínio belongs to.
+  // Every other caller creates it inside their own empresa.
+  const empresaId = callerUser.role === "global_admin" ? (body.empresaId as number | undefined) : callerUser.empresaId;
+  if (!empresaId) {
+    return c.json(
+      { error: callerUser.role === "global_admin" ? "empresaId é obrigatório." : "Usuário não está vinculado a uma empresa." },
+      400,
+    );
+  }
+
   const [created] = await db.insert(condominiosTable).values({
+    empresaId,
     nome,
     cnpj: (cnpj as string) ?? null,
     tipoCondominio: (tipoCondominio as "residencial" | "comercial" | "misto") ?? "residencial",

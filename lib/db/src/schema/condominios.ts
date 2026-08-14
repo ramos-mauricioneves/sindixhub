@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, boolean, integer, real, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { empresasTable } from "./empresas";
 
 export type EquipeData = {
   subSindico?: { nome?: string; telefone?: string; email?: string };
@@ -12,6 +13,8 @@ export type EquipeData = {
 
 export const condominiosTable = pgTable("condominios", {
   id: serial("id").primaryKey(),
+  // Tenant FK. NOT NULL — every condomínio belongs to exactly one empresa.
+  empresaId: integer("empresa_id").notNull().references(() => empresasTable.id),
   nome: text("nome").notNull(),
   cnpj: text("cnpj"),
   tipoCondominio: text("tipo_condominio").notNull().default("residencial"),

@@ -4,7 +4,12 @@ import { eq } from "drizzle-orm";
 import type { AppEnv } from "../types";
 import { logger } from "../lib/logger";
 
-export type UserRole = "admin" | "sindico" | "vistoriador";
+// "global_admin" is SindixHub's own platform staff — bypasses every
+// empresa/condomínio boundary, everywhere (see authorizeCondominioAccess in
+// routes/condominios.ts). "admin" is scoped to the user's own empresa
+// (tenant) since the multi-tenant migration — it no longer means
+// "unrestricted platform-wide" the way it did before empresas existed.
+export type UserRole = "global_admin" | "admin" | "sindico" | "vistoriador";
 
 // NOTE: `clerkId` (column `clerk_id`) is a historical name kept as-is —
 // renaming it would cascade into generated OpenAPI types
@@ -24,8 +29,11 @@ export const BYPASS_CLERK_ID = "bypass-admin";
 export async function ensureBypassUser(db: AppEnv["Variables"]["db"]) {
   const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, BYPASS_CLERK_ID));
   if (existing) {
-    if (existing.role !== "admin") {
-      await db.update(usersTable).set({ role: "admin" }).where(eq(usersTable.clerkId, BYPASS_CLERK_ID));
+    // global_admin has no empresaId by design (see authorizeCondominioAccess)
+    // — this sidesteps needing to backfill/track a default empresa for the
+    // local dev bypass user entirely.
+    if (existing.role !== "global_admin") {
+      await db.update(usersTable).set({ role: "global_admin", empresaId: null }).where(eq(usersTable.clerkId, BYPASS_CLERK_ID));
     }
     return existing;
   }
@@ -33,9 +41,9 @@ export async function ensureBypassUser(db: AppEnv["Variables"]["db"]) {
     clerkId: BYPASS_CLERK_ID,
     email: "admin@local.dev",
     name: "Administrador",
-    role: "admin",
+    role: "global_admin",
   }).returning();
-  logger.info({ clerkId: BYPASS_CLERK_ID }, "Bypass admin user created");
+  logger.info({ clerkId: BYPASS_CLERK_ID }, "Bypass global_admin user created");
   return created;
 }
 
@@ -60,7 +68,10 @@ export function requireRole(...roles: UserRole[]) {
       return c.json({ error: "Usuário não encontrado." }, 401);
     }
 
-    if (!roles.includes(user.role as UserRole)) {
+    // global_admin sits above every tenant-scoped role and always passes a
+    // requireRole(...) gate, regardless of which specific roles were listed
+    // — it's SindixHub's own platform staff, not scoped to any one empresa.
+    if (user.role !== "global_admin" && !roles.includes(user.role as UserRole)) {
       return c.json({ error: "Acesso negado. Permissão insuficiente." }, 403);
     }
 
@@ -77,7 +88,7 @@ export async function upsertUser(db: AppEnv["Variables"]["db"], clerkId: string,
     clerkId,
     email,
     name: name ?? null,
-    role: isBypass ? "admin" : "vistoriador",
+    role: isBypass ? "global_admin" : "vistoriador",
   }).returning();
 
   logger.info({ clerkId, role: created.role }, "New user created");

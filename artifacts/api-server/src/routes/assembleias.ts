@@ -37,8 +37,11 @@ router.get("/assembleias/insights", requireAuth, async (c) => {
   cutoffDate.setMonth(cutoffDate.getMonth() - months);
 
   let condoIds: number[] = [];
-  if (user.role === "admin") {
+  if (user.role === "global_admin") {
     const allCondos = await db.select({ id: condominiosTable.id }).from(condominiosTable);
+    condoIds = allCondos.map((c) => c.id);
+  } else if ((user.role === "admin" || user.escopoEmpresa) && user.empresaId) {
+    const allCondos = await db.select({ id: condominiosTable.id }).from(condominiosTable).where(eq(condominiosTable.empresaId, user.empresaId));
     condoIds = allCondos.map((c) => c.id);
   } else if (user.role === "sindico") {
     condoIds = await getUserCondominioIds(db, user.id);

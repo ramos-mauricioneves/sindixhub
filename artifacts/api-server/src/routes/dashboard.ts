@@ -25,9 +25,19 @@ router.get("/dashboard/summary", requireAuth, async (c) => {
   let condoIds: number[] = [];
   let assetCondition: any = undefined;
   let inspectionCondition: any = undefined;
+  // global_admin sees literally everything (all empresas); admin/escopoEmpresa
+  // see everything WITHIN their own empresa — neither of these existed as a
+  // distinct case before empresas were introduced, so the old "admin sees
+  // every condominio in the deployment" behavior would now leak across
+  // tenants if left unscoped.
+  const isUnrestrictedGlobal = user.role === "global_admin";
+  const isUnrestrictedInEmpresa = (user.role === "admin" || user.escopoEmpresa) && !!user.empresaId;
 
-  if (user.role === "admin") {
+  if (isUnrestrictedGlobal) {
     const allCondos = await db.select({ id: condominiosTable.id }).from(condominiosTable);
+    condoIds = allCondos.map((c) => c.id);
+  } else if (isUnrestrictedInEmpresa) {
+    const allCondos = await db.select({ id: condominiosTable.id }).from(condominiosTable).where(eq(condominiosTable.empresaId, user.empresaId!));
     condoIds = allCondos.map((c) => c.id);
   } else if (user.role === "sindico") {
     condoIds = await getUserCondominioIds(db, user.id);
@@ -40,11 +50,16 @@ router.get("/dashboard/summary", requireAuth, async (c) => {
     inspectionCondition = eq(inspectionsTable.createdByClerkId, auth.userId);
   }
 
-  const totalCondominios = user.role === "admin" || user.role === "sindico" ? condoIds.length : 0;
+  if (isUnrestrictedInEmpresa && condoIds.length > 0) {
+    assetCondition = inArray(assetsTable.condominioId, condoIds);
+    inspectionCondition = inArray(inspectionsTable.condominioId, condoIds);
+  }
+
+  const totalCondominios = isUnrestrictedGlobal || isUnrestrictedInEmpresa || user.role === "sindico" ? condoIds.length : 0;
 
   const allAssets = assetCondition
     ? await db.select().from(assetsTable).where(assetCondition)
-    : user.role === "admin"
+    : isUnrestrictedGlobal
       ? await db.select().from(assetsTable)
       : [];
 

@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { assetsTable, userCondominiosTable } from "@workspace/db/worker";
+import { assetsTable, userCondominiosTable, condominiosTable } from "@workspace/db/worker";
 import { eq, and } from "drizzle-orm";
 import { requireAuth, upsertUser } from "../middlewares/requireAuth";
 import type { AppEnv } from "../types";
@@ -9,6 +9,26 @@ const router = new Hono<AppEnv>();
 async function getUserCondominioIds(db: AppEnv["Variables"]["db"], userId: number): Promise<number[]> {
   const rows = await db.select().from(userCondominiosTable).where(eq(userCondominiosTable.userId, userId));
   return rows.map((r) => r.condominioId);
+}
+
+// Every non-global_admin caller must belong to the same empresa as the
+// target condomínio — closes cross-tenant access on asset routes, which
+// previously only checked "sindico" against user_condominios and let
+// admin/vistoriador/global_admin through unconditionally (a real leak once
+// more than one empresa exists). Returns an error Response to short-circuit
+// on, or null if access is fine to proceed to the role-specific checks.
+async function checkEmpresaAccess(
+  db: AppEnv["Variables"]["db"],
+  user: { role: string; empresaId: number | null },
+  condominioId: number,
+): Promise<Response | null> {
+  if (user.role === "global_admin") return null;
+  const [condo] = await db.select({ empresaId: condominiosTable.empresaId }).from(condominiosTable).where(eq(condominiosTable.id, condominioId));
+  if (!condo) return Response.json({ error: "Condomínio não encontrado." }, { status: 404 });
+  if (user.empresaId === null || user.empresaId !== condo.empresaId) {
+    return Response.json({ error: "Acesso negado." }, { status: 403 });
+  }
+  return null;
 }
 
 function formatAsset(a: typeof assetsTable.$inferSelect) {
@@ -37,7 +57,10 @@ router.get("/condominios/:condominioId/assets", requireAuth, async (c) => {
   const name = auth.sessionClaims?.["name"] as string | undefined;
   const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
-  if (user.role === "sindico") {
+  const empresaError = await checkEmpresaAccess(db, user, condominioId);
+  if (empresaError) return empresaError;
+
+  if (user.role === "sindico" && !user.escopoEmpresa) {
     const condoIds = await getUserCondominioIds(db, user.id);
     if (!condoIds.includes(condominioId)) return c.json({ error: "Acesso negado." }, 403);
   }
@@ -64,8 +87,11 @@ router.post("/condominios/:condominioId/assets", requireAuth, async (c) => {
   const name = auth.sessionClaims?.["name"] as string | undefined;
   const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
+  const empresaError = await checkEmpresaAccess(db, user, condominioId);
+  if (empresaError) return empresaError;
+
   if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
-  if (user.role === "sindico") {
+  if (user.role === "sindico" && !user.escopoEmpresa) {
     const condoIds = await getUserCondominioIds(db, user.id);
     if (!condoIds.includes(condominioId)) return c.json({ error: "Acesso negado." }, 403);
   }
@@ -104,6 +130,22 @@ router.get("/condominios/:condominioId/assets/:assetId", requireAuth, async (c) 
   const assetId = parseInt(c.req.param("assetId")!, 10);
   if (isNaN(condominioId) || isNaN(assetId)) return c.json({ error: "ID inválido" }, 400);
 
+  // This route previously had NO empresa/condomínio ownership check at all
+  // beyond requireAuth (any authenticated user could read any asset by ID
+  // across any condomínio) — closing that here.
+  const auth = c.get("auth")!;
+  const emailAddress = auth.sessionClaims?.["email"] as string | undefined;
+  const name = auth.sessionClaims?.["name"] as string | undefined;
+  const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
+
+  const empresaError = await checkEmpresaAccess(db, user, condominioId);
+  if (empresaError) return empresaError;
+
+  if (user.role === "sindico" && !user.escopoEmpresa) {
+    const condoIds = await getUserCondominioIds(db, user.id);
+    if (!condoIds.includes(condominioId)) return c.json({ error: "Acesso negado." }, 403);
+  }
+
   const [asset] = await db.select().from(assetsTable).where(and(eq(assetsTable.id, assetId), eq(assetsTable.condominioId, condominioId)));
   if (!asset) return c.json({ error: "Ativo não encontrado" }, 404);
   return c.json(formatAsset(asset));
@@ -121,8 +163,11 @@ router.patch("/condominios/:condominioId/assets/:assetId", requireAuth, async (c
   const name = auth.sessionClaims?.["name"] as string | undefined;
   const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
+  const empresaError = await checkEmpresaAccess(db, user, condominioId);
+  if (empresaError) return empresaError;
+
   if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
-  if (user.role === "sindico") {
+  if (user.role === "sindico" && !user.escopoEmpresa) {
     const condoIds = await getUserCondominioIds(db, user.id);
     if (!condoIds.includes(condominioId)) return c.json({ error: "Acesso negado." }, 403);
   }
@@ -154,8 +199,11 @@ router.delete("/condominios/:condominioId/assets/:assetId", requireAuth, async (
   const name = auth.sessionClaims?.["name"] as string | undefined;
   const user = await upsertUser(db, auth.userId, emailAddress ?? "", name);
 
+  const empresaError = await checkEmpresaAccess(db, user, condominioId);
+  if (empresaError) return empresaError;
+
   if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
-  if (user.role === "sindico") {
+  if (user.role === "sindico" && !user.escopoEmpresa) {
     const condoIds = await getUserCondominioIds(db, user.id);
     if (!condoIds.includes(condominioId)) return c.json({ error: "Acesso negado." }, 403);
   }
