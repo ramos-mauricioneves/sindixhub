@@ -41,6 +41,7 @@ function formatAsset(a: typeof assetsTable.$inferSelect) {
     criticidade: a.criticidade,
     status: a.status,
     descricao: a.descricao,
+    categoriaServico: a.categoriaServico ?? null,
     createdAt: a.createdAt,
     updatedAt: a.updatedAt,
   };
@@ -97,7 +98,7 @@ router.post("/condominios/:condominioId/assets", requireAuth, async (c) => {
   }
 
   const body = await c.req.json().catch(() => ({}));
-  const { nome, tipo, criticidade, status, descricao, areaId } = body;
+  const { nome, tipo, criticidade, status, descricao, areaId, categoriaServico } = body;
   if (!nome || !tipo || !criticidade || !status) {
     return c.json({ error: "nome, tipo, criticidade e status são obrigatórios" }, 400);
   }
@@ -119,6 +120,7 @@ router.post("/condominios/:condominioId/assets", requireAuth, async (c) => {
     criticidade,
     status,
     descricao: descricao ?? null,
+    categoriaServico: categoriaServico ?? null,
   }).returning();
   return c.json(formatAsset(created), 201);
 });
@@ -173,7 +175,7 @@ router.patch("/condominios/:condominioId/assets/:assetId", requireAuth, async (c
   }
 
   const body = await c.req.json().catch(() => ({}));
-  const { nome, tipo, criticidade, status, descricao, areaId } = body;
+  const { nome, tipo, criticidade, status, descricao, areaId, categoriaServico } = body;
   const updateData: Record<string, any> = {};
   if (nome !== undefined) updateData.nome = nome;
   if (tipo !== undefined) updateData.tipo = tipo;
@@ -181,6 +183,7 @@ router.patch("/condominios/:condominioId/assets/:assetId", requireAuth, async (c
   if (status !== undefined) updateData.status = status;
   if (descricao !== undefined) updateData.descricao = descricao;
   if (areaId !== undefined) updateData.areaId = areaId;
+  if (categoriaServico !== undefined) updateData.categoriaServico = categoriaServico;
 
   const [updated] = await db.update(assetsTable).set(updateData).where(and(eq(assetsTable.id, assetId), eq(assetsTable.condominioId, condominioId))).returning();
   if (!updated) return c.json({ error: "Ativo não encontrado" }, 404);

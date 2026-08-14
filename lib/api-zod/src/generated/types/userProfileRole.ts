@@ -10,6 +10,7 @@ export type UserProfileRole =
   (typeof UserProfileRole)[keyof typeof UserProfileRole];
 
 export const UserProfileRole = {
+  global_admin: "global_admin",
   admin: "admin",
   sindico: "sindico",
   vistoriador: "vistoriador",

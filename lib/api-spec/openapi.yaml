@@ -32,6 +32,10 @@ tags:
     description: Document and inspection report management
   - name: seguro
     description: Building insurance management
+  - name: empresas
+    description: Multi-tenant empresa (síndico profissional company) management — global_admin only
+  - name: acionamentos
+    description: Prestador suggestion and dispatch tracking for inspection findings
 paths:
   /healthz:
     get:
@@ -880,7 +884,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PrestadorCondominioBody"
+              $ref: "#/components/schemas/CreatePrestadorAssociacaoBody"
       responses:
         "201":
           description: Provider created
@@ -910,7 +914,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PrestadorCondominioBody"
+              $ref: "#/components/schemas/UpdatePrestadorAssociacaoBody"
       responses:
         "200":
           description: Provider updated
@@ -936,6 +940,378 @@ paths:
       responses:
         "200":
           description: Provider deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /empresas:
+    get:
+      operationId: listEmpresas
+      tags: [empresas]
+      summary: List empresas (global_admin only)
+      responses:
+        "200":
+          description: List of empresas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Empresa"
+    post:
+      operationId: createEmpresa
+      tags: [empresas]
+      summary: Create an empresa (global_admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmpresaBody"
+      responses:
+        "201":
+          description: Empresa created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empresa"
+
+  /empresas/{id}:
+    patch:
+      operationId: updateEmpresa
+      tags: [empresas]
+      summary: Update an empresa (global_admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmpresaBody"
+      responses:
+        "200":
+          description: Empresa updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Empresa"
+
+  /empresas/{id}/condominios:
+    get:
+      operationId: listEmpresaCondominios
+      tags: [empresas]
+      summary: List condomínios belonging to this empresa (global_admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of condomínios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Condominio"
+
+  /empresas/{empresaId}/prestadores:
+    get:
+      operationId: listEmpresaPrestadores
+      tags: [prestadores]
+      summary: List master prestador records for this empresa
+      parameters:
+        - name: empresaId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of prestador master records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PrestadorMestre"
+    post:
+      operationId: createEmpresaPrestador
+      tags: [prestadores]
+      summary: Create a prestador master record at the empresa level
+      parameters:
+        - name: empresaId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePrestadorMestreBody"
+      responses:
+        "201":
+          description: Prestador created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrestadorMestre"
+
+  /prestadores/sugestao:
+    get:
+      operationId: sugerirPrestador
+      tags: [acionamentos]
+      summary: Suggest a prestador for a finding, matched by service category (stateless — computes on the fly, writes nothing)
+      parameters:
+        - name: condominioId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: assetId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: areaId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: categoria
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Suggested prestadores, best match first
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SugestaoPrestadorResponse"
+
+  /prestadores/{id}:
+    patch:
+      operationId: updatePrestadorMestre
+      tags: [prestadores]
+      summary: Update a prestador master record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePrestadorMestreBody"
+      responses:
+        "200":
+          description: Prestador updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PrestadorMestre"
+    delete:
+      operationId: deletePrestadorMestre
+      tags: [prestadores]
+      summary: Delete a prestador master record (fails if it still has condomínio associations)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Prestador deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /prestadores/{id}/usuarios:
+    get:
+      operationId: listPrestadorUsuarios
+      tags: [prestadores]
+      summary: List login users linked to this prestador
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of linked users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PrestadorUsuario"
+    post:
+      operationId: linkPrestadorUsuario
+      tags: [prestadores]
+      summary: Link a login user to this prestador (e.g. a zelador employed by a terceirizada)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LinkPrestadorUsuarioBody"
+      responses:
+        "200":
+          description: Linked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /prestadores/{id}/usuarios/{userId}:
+    delete:
+      operationId: unlinkPrestadorUsuario
+      tags: [prestadores]
+      summary: Unlink a login user from this prestador
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unlinked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required:
+                  - ok
+
+  /inspections/{id}/acionamentos:
+    get:
+      operationId: listInspectionAcionamentos
+      tags: [acionamentos]
+      summary: List acionamentos for an inspection
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of acionamentos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Acionamento"
+    post:
+      operationId: createAcionamento
+      tags: [acionamentos]
+      summary: Confirm/create an acionamento for an inspection finding
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAcionamentoBody"
+      responses:
+        "201":
+          description: Acionamento created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Acionamento"
+
+  /acionamentos/{id}:
+    patch:
+      operationId: updateAcionamento
+      tags: [acionamentos]
+      summary: Update an acionamento's status/observacoes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateAcionamentoBody"
+      responses:
+        "200":
+          description: Acionamento updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Acionamento"
+    delete:
+      operationId: deleteAcionamento
+      tags: [acionamentos]
+      summary: Delete an acionamento
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Acionamento deleted
           content:
             application/json:
               schema:
@@ -1353,13 +1729,24 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, sindico, vistoriador]
+          enum: [global_admin, admin, sindico, vistoriador]
         condominio:
           type: string
         condominioIds:
           type: array
           items:
             type: integer
+        empresaId:
+          type: integer
+          nullable: true
+          description: Tenant FK. Null only for global_admin.
+        prestadorId:
+          type: integer
+          nullable: true
+          description: Set when this user is staff of a prestador (e.g. a zelador employed by a terceirizada).
+        escopoEmpresa:
+          type: boolean
+          description: When true, this user has unrestricted access to every condomínio in their own empresa (no user_condominios rows needed).
         createdAt:
           type: string
           format: date-time
@@ -1375,7 +1762,7 @@ components:
       properties:
         role:
           type: string
-          enum: [admin, sindico, vistoriador]
+          enum: [global_admin, admin, sindico, vistoriador]
         condominio:
           type: string
       required:
@@ -1394,6 +1781,9 @@ components:
       properties:
         id:
           type: integer
+        empresaId:
+          type: integer
+          description: Tenant FK — which empresa (síndico profissional company) this condomínio belongs to.
         nome:
           type: string
         cnpj:
@@ -1628,6 +2018,11 @@ components:
           enum: [operacional, em_manutencao, inativo]
         descricao:
           type: string
+        categoriaServico:
+          type: string
+          nullable: true
+          enum: [elevador, hidraulica, eletrica, pintura, jardinagem, portaria_seguranca, limpeza, ar_condicionado, estrutural_civil, incendio_ppci, dedetizacao, outro]
+          description: Trade/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature.
         createdAt:
           type: string
           format: date-time
@@ -1707,6 +2102,10 @@ components:
           enum: [operacional, em_manutencao, inativo]
         descricao:
           type: string
+        categoriaServico:
+          type: string
+          nullable: true
+          enum: [elevador, hidraulica, eletrica, pintura, jardinagem, portaria_seguranca, limpeza, ar_condicionado, estrutural_civil, incendio_ppci, dedetizacao, outro]
       required:
         - nome
         - tipo
@@ -1932,16 +2331,26 @@ components:
       required:
         - tipoServico
 
+    # The per-condomínio ASSOCIATION between a prestador master record
+    # (see PrestadorMestre) and this condomínio — not the master record
+    # itself. `id` here is the association's id (prestador_condominios.id),
+    # `prestadorId` points at the master. categoria/telefone/email are
+    # overrides that fall back to the master's value when null (already
+    # resolved server-side — this response always has the effective value).
     PrestadorCondominio:
       type: object
       properties:
         id:
           type: integer
+          description: Association id (not the prestador master record's id — see prestadorId).
+        prestadorId:
+          type: integer
         condominioId:
           type: integer
         nome:
           type: string
-        especialidade:
+          description: From the master record — read-only here, edit via the empresa-level prestador endpoints.
+        categoria:
           type: string
           nullable: true
         telefone:
@@ -1950,38 +2359,341 @@ components:
         email:
           type: string
           nullable: true
+        vigenciaInicio:
+          type: string
+          nullable: true
+        vigenciaFim:
+          type: string
+          nullable: true
+        valorMensal:
+          type: number
+          nullable: true
         avaliacao:
           type: integer
           nullable: true
         observacoes:
           type: string
           nullable: true
+        ativo:
+          type: boolean
         createdAt:
           type: string
           format: date-time
       required:
         - id
+        - prestadorId
         - condominioId
         - nome
+        - ativo
         - createdAt
 
-    PrestadorCondominioBody:
+    # POST body: either `prestadorId` (associate an existing empresa-level
+    # prestador to this condomínio) OR `nome` (+ optional categoria/telefone/
+    # email/observacoes, creating a brand-new master record and associating
+    # it in one step). Either way, the override/contract fields below apply
+    # to the new association.
+    CreatePrestadorAssociacaoBody:
       type: object
       properties:
+        prestadorId:
+          type: integer
         nome:
           type: string
-        especialidade:
+        categoria:
           type: string
         telefone:
           type: string
         email:
           type: string
+        vigenciaInicio:
+          type: string
+        vigenciaFim:
+          type: string
+        valorMensal:
+          type: number
         avaliacao:
           type: integer
         observacoes:
           type: string
+
+    # PATCH body: only edits the per-condomínio association/override — never
+    # the master record's own fields (nome, cnpj).
+    UpdatePrestadorAssociacaoBody:
+      type: object
+      properties:
+        categoria:
+          type: string
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        vigenciaInicio:
+          type: string
+          nullable: true
+        vigenciaFim:
+          type: string
+          nullable: true
+        valorMensal:
+          type: number
+          nullable: true
+        avaliacao:
+          type: integer
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+
+    PrestadorMestre:
+      type: object
+      properties:
+        id:
+          type: integer
+        empresaId:
+          type: integer
+        nome:
+          type: string
+        cnpj:
+          type: string
+          nullable: true
+        categoria:
+          type: string
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - empresaId
+        - nome
+        - ativo
+        - createdAt
+        - updatedAt
+
+    CreatePrestadorMestreBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cnpj:
+          type: string
+        categoria:
+          type: string
+        telefone:
+          type: string
+        email:
+          type: string
+        observacoes:
+          type: string
+        ativo:
+          type: boolean
       required:
         - nome
+
+    UpdatePrestadorMestreBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cnpj:
+          type: string
+          nullable: true
+        categoria:
+          type: string
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        observacoes:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+
+    PrestadorUsuario:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+          nullable: true
+      required:
+        - id
+        - clerkId
+        - email
+
+    LinkPrestadorUsuarioBody:
+      type: object
+      description: Provide either clerkId or email — the target user must already have logged into SindixHub at least once.
+      properties:
+        clerkId:
+          type: string
+        email:
+          type: string
+
+    Empresa:
+      type: object
+      properties:
+        id:
+          type: integer
+        nome:
+          type: string
+        cnpj:
+          type: string
+          nullable: true
+        ativo:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - nome
+        - ativo
+        - createdAt
+        - updatedAt
+
+    EmpresaBody:
+      type: object
+      properties:
+        nome:
+          type: string
+        cnpj:
+          type: string
+        ativo:
+          type: boolean
+      required:
+        - nome
+
+    SugestaoPrestadorItem:
+      type: object
+      properties:
+        prestadorId:
+          type: integer
+        nome:
+          type: string
+        categoria:
+          type: string
+          nullable: true
+        telefone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        avaliacao:
+          type: integer
+          nullable: true
+      required:
+        - prestadorId
+        - nome
+
+    SugestaoPrestadorResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/SugestaoPrestadorItem"
+        categoria:
+          type: string
+        reason:
+          type: string
+      required:
+        - suggestions
+
+    Acionamento:
+      type: object
+      properties:
+        id:
+          type: integer
+        inspectionId:
+          type: integer
+        assetId:
+          type: integer
+          nullable: true
+        areaId:
+          type: integer
+          nullable: true
+        prestadorId:
+          type: integer
+        status:
+          type: string
+          enum: [sugerido, acionado, resolvido]
+        observacoes:
+          type: string
+          nullable: true
+        createdByClerkId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - inspectionId
+        - prestadorId
+        - status
+        - createdByClerkId
+        - createdAt
+        - updatedAt
+
+    CreateAcionamentoBody:
+      type: object
+      properties:
+        prestadorId:
+          type: integer
+        assetId:
+          type: integer
+        areaId:
+          type: integer
+        status:
+          type: string
+          enum: [sugerido, acionado, resolvido]
+        observacoes:
+          type: string
+      required:
+        - prestadorId
+
+    UpdateAcionamentoBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [sugerido, acionado, resolvido]
+        observacoes:
+          type: string
 
     DocumentoCondominio:
       type: object

@@ -10,6 +10,8 @@ import type { EquipeData } from "./equipeData";
 
 export interface Condominio {
   id: number;
+  /** Tenant FK — which empresa (síndico profissional company) this condomínio belongs to. */
+  empresaId?: number;
   nome: string;
   cnpj?: string | null;
   tipoCondominio: CondominioTipoCondominio;

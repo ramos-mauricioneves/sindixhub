@@ -220,9 +220,25 @@ export const GetMeResponse = zod.object({
   clerkId: zod.string(),
   email: zod.string(),
   name: zod.string().optional(),
-  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  role: zod.enum(["global_admin", "admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
   condominioIds: zod.array(zod.number()).optional(),
+  empresaId: zod
+    .number()
+    .nullish()
+    .describe("Tenant FK. Null only for global_admin."),
+  prestadorId: zod
+    .number()
+    .nullish()
+    .describe(
+      "Set when this user is staff of a prestador (e.g. a zelador employed by a terceirizada).",
+    ),
+  escopoEmpresa: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, this user has unrestricted access to every condomínio in their own empresa (no user_condominios rows needed).",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -234,9 +250,25 @@ export const ListUsersResponseItem = zod.object({
   clerkId: zod.string(),
   email: zod.string(),
   name: zod.string().optional(),
-  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  role: zod.enum(["global_admin", "admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
   condominioIds: zod.array(zod.number()).optional(),
+  empresaId: zod
+    .number()
+    .nullish()
+    .describe("Tenant FK. Null only for global_admin."),
+  prestadorId: zod
+    .number()
+    .nullish()
+    .describe(
+      "Set when this user is staff of a prestador (e.g. a zelador employed by a terceirizada).",
+    ),
+  escopoEmpresa: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, this user has unrestricted access to every condomínio in their own empresa (no user_condominios rows needed).",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
@@ -249,7 +281,7 @@ export const UpdateUserRoleParams = zod.object({
 });
 
 export const UpdateUserRoleBody = zod.object({
-  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  role: zod.enum(["global_admin", "admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
 });
 
@@ -258,9 +290,25 @@ export const UpdateUserRoleResponse = zod.object({
   clerkId: zod.string(),
   email: zod.string(),
   name: zod.string().optional(),
-  role: zod.enum(["admin", "sindico", "vistoriador"]),
+  role: zod.enum(["global_admin", "admin", "sindico", "vistoriador"]),
   condominio: zod.string().optional(),
   condominioIds: zod.array(zod.number()).optional(),
+  empresaId: zod
+    .number()
+    .nullish()
+    .describe("Tenant FK. Null only for global_admin."),
+  prestadorId: zod
+    .number()
+    .nullish()
+    .describe(
+      "Set when this user is staff of a prestador (e.g. a zelador employed by a terceirizada).",
+    ),
+  escopoEmpresa: zod
+    .boolean()
+    .optional()
+    .describe(
+      "When true, this user has unrestricted access to every condomínio in their own empresa (no user_condominios rows needed).",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -273,6 +321,12 @@ export const GetUserCondominiosParams = zod.object({
 
 export const GetUserCondominiosResponseItem = zod.object({
   id: zod.number(),
+  empresaId: zod
+    .number()
+    .optional()
+    .describe(
+      "Tenant FK — which empresa (síndico profissional company) this condomínio belongs to.",
+    ),
   nome: zod.string(),
   cnpj: zod.string().nullish(),
   tipoCondominio: zod.enum(["residencial", "comercial", "misto"]),
@@ -371,6 +425,12 @@ export const RemoveUserCondominioResponse = zod.object({
  */
 export const ListCondominiosResponseItem = zod.object({
   id: zod.number(),
+  empresaId: zod
+    .number()
+    .optional()
+    .describe(
+      "Tenant FK — which empresa (síndico profissional company) this condomínio belongs to.",
+    ),
   nome: zod.string(),
   cnpj: zod.string().nullish(),
   tipoCondominio: zod.enum(["residencial", "comercial", "misto"]),
@@ -510,6 +570,12 @@ export const GetCondominioParams = zod.object({
 
 export const GetCondominioResponse = zod.object({
   id: zod.number(),
+  empresaId: zod
+    .number()
+    .optional()
+    .describe(
+      "Tenant FK — which empresa (síndico profissional company) this condomínio belongs to.",
+    ),
   nome: zod.string(),
   cnpj: zod.string().nullish(),
   tipoCondominio: zod.enum(["residencial", "comercial", "misto"]),
@@ -645,6 +711,12 @@ export const UpdateCondominioBody = zod.object({
 
 export const UpdateCondominioResponse = zod.object({
   id: zod.number(),
+  empresaId: zod
+    .number()
+    .optional()
+    .describe(
+      "Tenant FK — which empresa (síndico profissional company) this condomínio belongs to.",
+    ),
   nome: zod.string(),
   cnpj: zod.string().nullish(),
   tipoCondominio: zod.enum(["residencial", "comercial", "misto"]),
@@ -853,6 +925,25 @@ export const ListAssetsResponseItem = zod.object({
   criticidade: zod.enum(["baixa", "media", "alta"]),
   status: zod.enum(["operacional", "em_manutencao", "inativo"]),
   descricao: zod.string().optional(),
+  categoriaServico: zod
+    .enum([
+      "elevador",
+      "hidraulica",
+      "eletrica",
+      "pintura",
+      "jardinagem",
+      "portaria_seguranca",
+      "limpeza",
+      "ar_condicionado",
+      "estrutural_civil",
+      "incendio_ppci",
+      "dedetizacao",
+      "outro",
+    ])
+    .nullish()
+    .describe(
+      "Trade\/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature.",
+    ),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -872,6 +963,22 @@ export const CreateAssetBody = zod.object({
   criticidade: zod.enum(["baixa", "media", "alta"]),
   status: zod.enum(["operacional", "em_manutencao", "inativo"]),
   descricao: zod.string().optional(),
+  categoriaServico: zod
+    .enum([
+      "elevador",
+      "hidraulica",
+      "eletrica",
+      "pintura",
+      "jardinagem",
+      "portaria_seguranca",
+      "limpeza",
+      "ar_condicionado",
+      "estrutural_civil",
+      "incendio_ppci",
+      "dedetizacao",
+      "outro",
+    ])
+    .nullish(),
 });
 
 /**
@@ -891,6 +998,25 @@ export const GetAssetResponse = zod.object({
   criticidade: zod.enum(["baixa", "media", "alta"]),
   status: zod.enum(["operacional", "em_manutencao", "inativo"]),
   descricao: zod.string().optional(),
+  categoriaServico: zod
+    .enum([
+      "elevador",
+      "hidraulica",
+      "eletrica",
+      "pintura",
+      "jardinagem",
+      "portaria_seguranca",
+      "limpeza",
+      "ar_condicionado",
+      "estrutural_civil",
+      "incendio_ppci",
+      "dedetizacao",
+      "outro",
+    ])
+    .nullish()
+    .describe(
+      "Trade\/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature.",
+    ),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -910,6 +1036,22 @@ export const UpdateAssetBody = zod.object({
   criticidade: zod.enum(["baixa", "media", "alta"]),
   status: zod.enum(["operacional", "em_manutencao", "inativo"]),
   descricao: zod.string().optional(),
+  categoriaServico: zod
+    .enum([
+      "elevador",
+      "hidraulica",
+      "eletrica",
+      "pintura",
+      "jardinagem",
+      "portaria_seguranca",
+      "limpeza",
+      "ar_condicionado",
+      "estrutural_civil",
+      "incendio_ppci",
+      "dedetizacao",
+      "outro",
+    ])
+    .nullish(),
 });
 
 export const UpdateAssetResponse = zod.object({
@@ -921,6 +1063,25 @@ export const UpdateAssetResponse = zod.object({
   criticidade: zod.enum(["baixa", "media", "alta"]),
   status: zod.enum(["operacional", "em_manutencao", "inativo"]),
   descricao: zod.string().optional(),
+  categoriaServico: zod
+    .enum([
+      "elevador",
+      "hidraulica",
+      "eletrica",
+      "pintura",
+      "jardinagem",
+      "portaria_seguranca",
+      "limpeza",
+      "ar_condicionado",
+      "estrutural_civil",
+      "incendio_ppci",
+      "dedetizacao",
+      "outro",
+    ])
+    .nullish()
+    .describe(
+      "Trade\/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature.",
+    ),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -1038,14 +1199,27 @@ export const ListPrestadoresParams = zod.object({
 });
 
 export const ListPrestadoresResponseItem = zod.object({
-  id: zod.number(),
+  id: zod
+    .number()
+    .describe(
+      "Association id (not the prestador master record's id — see prestadorId).",
+    ),
+  prestadorId: zod.number(),
   condominioId: zod.number(),
-  nome: zod.string(),
-  especialidade: zod.string().nullish(),
+  nome: zod
+    .string()
+    .describe(
+      "From the master record — read-only here, edit via the empresa-level prestador endpoints.",
+    ),
+  categoria: zod.string().nullish(),
   telefone: zod.string().nullish(),
   email: zod.string().nullish(),
+  vigenciaInicio: zod.string().nullish(),
+  vigenciaFim: zod.string().nullish(),
+  valorMensal: zod.number().nullish(),
   avaliacao: zod.number().nullish(),
   observacoes: zod.string().nullish(),
+  ativo: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 export const ListPrestadoresResponse = zod.array(ListPrestadoresResponseItem);
@@ -1058,10 +1232,14 @@ export const CreatePrestadorParams = zod.object({
 });
 
 export const CreatePrestadorBody = zod.object({
-  nome: zod.string(),
-  especialidade: zod.string().optional(),
+  prestadorId: zod.number().optional(),
+  nome: zod.string().optional(),
+  categoria: zod.string().optional(),
   telefone: zod.string().optional(),
   email: zod.string().optional(),
+  vigenciaInicio: zod.string().optional(),
+  vigenciaFim: zod.string().optional(),
+  valorMensal: zod.number().optional(),
   avaliacao: zod.number().optional(),
   observacoes: zod.string().optional(),
 });
@@ -1075,23 +1253,39 @@ export const UpdatePrestadorParams = zod.object({
 });
 
 export const UpdatePrestadorBody = zod.object({
-  nome: zod.string(),
-  especialidade: zod.string().optional(),
-  telefone: zod.string().optional(),
-  email: zod.string().optional(),
-  avaliacao: zod.number().optional(),
-  observacoes: zod.string().optional(),
+  categoria: zod.string().nullish(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  vigenciaInicio: zod.string().nullish(),
+  vigenciaFim: zod.string().nullish(),
+  valorMensal: zod.number().nullish(),
+  avaliacao: zod.number().nullish(),
+  observacoes: zod.string().nullish(),
+  ativo: zod.boolean().optional(),
 });
 
 export const UpdatePrestadorResponse = zod.object({
-  id: zod.number(),
+  id: zod
+    .number()
+    .describe(
+      "Association id (not the prestador master record's id — see prestadorId).",
+    ),
+  prestadorId: zod.number(),
   condominioId: zod.number(),
-  nome: zod.string(),
-  especialidade: zod.string().nullish(),
+  nome: zod
+    .string()
+    .describe(
+      "From the master record — read-only here, edit via the empresa-level prestador endpoints.",
+    ),
+  categoria: zod.string().nullish(),
   telefone: zod.string().nullish(),
   email: zod.string().nullish(),
+  vigenciaInicio: zod.string().nullish(),
+  vigenciaFim: zod.string().nullish(),
+  valorMensal: zod.number().nullish(),
   avaliacao: zod.number().nullish(),
   observacoes: zod.string().nullish(),
+  ativo: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
@@ -1104,6 +1298,362 @@ export const DeletePrestadorParams = zod.object({
 });
 
 export const DeletePrestadorResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List empresas (global_admin only)
+ */
+export const ListEmpresasResponseItem = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  cnpj: zod.string().nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListEmpresasResponse = zod.array(ListEmpresasResponseItem);
+
+/**
+ * @summary Create an empresa (global_admin only)
+ */
+export const CreateEmpresaBody = zod.object({
+  nome: zod.string(),
+  cnpj: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+/**
+ * @summary Update an empresa (global_admin only)
+ */
+export const UpdateEmpresaParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateEmpresaBody = zod.object({
+  nome: zod.string(),
+  cnpj: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+export const UpdateEmpresaResponse = zod.object({
+  id: zod.number(),
+  nome: zod.string(),
+  cnpj: zod.string().nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List condomínios belonging to this empresa (global_admin only)
+ */
+export const ListEmpresaCondominiosParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListEmpresaCondominiosResponseItem = zod.object({
+  id: zod.number(),
+  empresaId: zod
+    .number()
+    .optional()
+    .describe(
+      "Tenant FK — which empresa (síndico profissional company) this condomínio belongs to.",
+    ),
+  nome: zod.string(),
+  cnpj: zod.string().nullish(),
+  tipoCondominio: zod.enum(["residencial", "comercial", "misto"]),
+  endereco: zod.string().nullish(),
+  cep: zod.string().nullish(),
+  bairro: zod.string().nullish(),
+  cidade: zod.string().nullish(),
+  estado: zod.string().nullish(),
+  totalUnidades: zod.number().nullish(),
+  totalBlocos: zod.number().nullish(),
+  totalAndares: zod.number().nullish(),
+  anoConstrucao: zod.number().nullish(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  sindico: zod.string().nullish(),
+  zelador: zod.string().nullish(),
+  administradora: zod.string().nullish(),
+  inscricaoMunicipal: zod.string().nullish(),
+  areaTotalM2: zod.number().nullish(),
+  areaLazerM2: zod.number().nullish(),
+  numElevadores: zod.number().nullish(),
+  tipoPortaria: zod.string().nullish(),
+  equipe: zod
+    .object({
+      subSindico: zod
+        .object({
+          nome: zod.string().optional(),
+          telefone: zod.string().optional(),
+          email: zod.string().optional(),
+        })
+        .nullish(),
+      zelador: zod
+        .object({
+          tipo: zod.string().optional(),
+          nome: zod.string().optional(),
+          telefone: zod.string().optional(),
+          empresaTerceirizadora: zod.string().optional(),
+        })
+        .nullish(),
+      portaria: zod
+        .object({
+          tipo: zod.string().optional(),
+          empresa: zod.string().optional(),
+        })
+        .nullish(),
+      asg: zod
+        .object({
+          quantidade: zod.number().optional(),
+          empresa: zod.string().optional(),
+        })
+        .nullish(),
+      seguranca: zod
+        .object({
+          quantidade: zod.number().optional(),
+          empresa: zod.string().optional(),
+        })
+        .nullish(),
+    })
+    .nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListEmpresaCondominiosResponse = zod.array(
+  ListEmpresaCondominiosResponseItem,
+);
+
+/**
+ * @summary List master prestador records for this empresa
+ */
+export const ListEmpresaPrestadoresParams = zod.object({
+  empresaId: zod.coerce.number(),
+});
+
+export const ListEmpresaPrestadoresResponseItem = zod.object({
+  id: zod.number(),
+  empresaId: zod.number(),
+  nome: zod.string(),
+  cnpj: zod.string().nullish(),
+  categoria: zod.string().nullish(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  observacoes: zod.string().nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListEmpresaPrestadoresResponse = zod.array(
+  ListEmpresaPrestadoresResponseItem,
+);
+
+/**
+ * @summary Create a prestador master record at the empresa level
+ */
+export const CreateEmpresaPrestadorParams = zod.object({
+  empresaId: zod.coerce.number(),
+});
+
+export const CreateEmpresaPrestadorBody = zod.object({
+  nome: zod.string(),
+  cnpj: zod.string().optional(),
+  categoria: zod.string().optional(),
+  telefone: zod.string().optional(),
+  email: zod.string().optional(),
+  observacoes: zod.string().optional(),
+  ativo: zod.boolean().optional(),
+});
+
+/**
+ * @summary Suggest a prestador for a finding, matched by service category (stateless — computes on the fly, writes nothing)
+ */
+export const SugerirPrestadorQueryParams = zod.object({
+  condominioId: zod.coerce.number(),
+  assetId: zod.coerce.number().optional(),
+  areaId: zod.coerce.number().optional(),
+  categoria: zod.coerce.string().optional(),
+});
+
+export const SugerirPrestadorResponse = zod.object({
+  suggestions: zod.array(
+    zod.object({
+      prestadorId: zod.number(),
+      nome: zod.string(),
+      categoria: zod.string().nullish(),
+      telefone: zod.string().nullish(),
+      email: zod.string().nullish(),
+      avaliacao: zod.number().nullish(),
+    }),
+  ),
+  categoria: zod.string().optional(),
+  reason: zod.string().optional(),
+});
+
+/**
+ * @summary Update a prestador master record
+ */
+export const UpdatePrestadorMestreParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePrestadorMestreBody = zod.object({
+  nome: zod.string().optional(),
+  cnpj: zod.string().nullish(),
+  categoria: zod.string().nullish(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  observacoes: zod.string().nullish(),
+  ativo: zod.boolean().optional(),
+});
+
+export const UpdatePrestadorMestreResponse = zod.object({
+  id: zod.number(),
+  empresaId: zod.number(),
+  nome: zod.string(),
+  cnpj: zod.string().nullish(),
+  categoria: zod.string().nullish(),
+  telefone: zod.string().nullish(),
+  email: zod.string().nullish(),
+  observacoes: zod.string().nullish(),
+  ativo: zod.boolean(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a prestador master record (fails if it still has condomínio associations)
+ */
+export const DeletePrestadorMestreParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeletePrestadorMestreResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List login users linked to this prestador
+ */
+export const ListPrestadorUsuariosParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListPrestadorUsuariosResponseItem = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  email: zod.string(),
+  name: zod.string().nullish(),
+});
+export const ListPrestadorUsuariosResponse = zod.array(
+  ListPrestadorUsuariosResponseItem,
+);
+
+/**
+ * @summary Link a login user to this prestador (e.g. a zelador employed by a terceirizada)
+ */
+export const LinkPrestadorUsuarioParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const LinkPrestadorUsuarioBody = zod
+  .object({
+    clerkId: zod.string().optional(),
+    email: zod.string().optional(),
+  })
+  .describe(
+    "Provide either clerkId or email — the target user must already have logged into SindixHub at least once.",
+  );
+
+export const LinkPrestadorUsuarioResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Unlink a login user from this prestador
+ */
+export const UnlinkPrestadorUsuarioParams = zod.object({
+  id: zod.coerce.number(),
+  userId: zod.coerce.number(),
+});
+
+export const UnlinkPrestadorUsuarioResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary List acionamentos for an inspection
+ */
+export const ListInspectionAcionamentosParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListInspectionAcionamentosResponseItem = zod.object({
+  id: zod.number(),
+  inspectionId: zod.number(),
+  assetId: zod.number().nullish(),
+  areaId: zod.number().nullish(),
+  prestadorId: zod.number(),
+  status: zod.enum(["sugerido", "acionado", "resolvido"]),
+  observacoes: zod.string().nullish(),
+  createdByClerkId: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListInspectionAcionamentosResponse = zod.array(
+  ListInspectionAcionamentosResponseItem,
+);
+
+/**
+ * @summary Confirm/create an acionamento for an inspection finding
+ */
+export const CreateAcionamentoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateAcionamentoBody = zod.object({
+  prestadorId: zod.number(),
+  assetId: zod.number().optional(),
+  areaId: zod.number().optional(),
+  status: zod.enum(["sugerido", "acionado", "resolvido"]).optional(),
+  observacoes: zod.string().optional(),
+});
+
+/**
+ * @summary Update an acionamento's status/observacoes
+ */
+export const UpdateAcionamentoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateAcionamentoBody = zod.object({
+  status: zod.enum(["sugerido", "acionado", "resolvido"]).optional(),
+  observacoes: zod.string().optional(),
+});
+
+export const UpdateAcionamentoResponse = zod.object({
+  id: zod.number(),
+  inspectionId: zod.number(),
+  assetId: zod.number().nullish(),
+  areaId: zod.number().nullish(),
+  prestadorId: zod.number(),
+  status: zod.enum(["sugerido", "acionado", "resolvido"]),
+  observacoes: zod.string().nullish(),
+  createdByClerkId: zod.string(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an acionamento
+ */
+export const DeleteAcionamentoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteAcionamentoResponse = zod.object({
   ok: zod.boolean(),
 });
 
@@ -1316,6 +1866,25 @@ export const GetDashboardSummaryResponse = zod.object({
       criticidade: zod.enum(["baixa", "media", "alta"]),
       status: zod.enum(["operacional", "em_manutencao", "inativo"]),
       descricao: zod.string().optional(),
+      categoriaServico: zod
+        .enum([
+          "elevador",
+          "hidraulica",
+          "eletrica",
+          "pintura",
+          "jardinagem",
+          "portaria_seguranca",
+          "limpeza",
+          "ar_condicionado",
+          "estrutural_civil",
+          "incendio_ppci",
+          "dedetizacao",
+          "outro",
+        ])
+        .nullish()
+        .describe(
+          "Trade\/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature.",
+        ),
       createdAt: zod.coerce.date(),
       updatedAt: zod.coerce.date(),
     }),

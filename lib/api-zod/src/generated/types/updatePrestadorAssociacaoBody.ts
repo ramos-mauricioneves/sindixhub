@@ -6,13 +6,7 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export interface PrestadorCondominio {
-  /** Association id (not the prestador master record's id — see prestadorId). */
-  id: number;
-  prestadorId: number;
-  condominioId: number;
-  /** From the master record — read-only here, edit via the empresa-level prestador endpoints. */
-  nome: string;
+export interface UpdatePrestadorAssociacaoBody {
   categoria?: string | null;
   telefone?: string | null;
   email?: string | null;
@@ -21,6 +15,5 @@ export interface PrestadorCondominio {
   valorMensal?: number | null;
   avaliacao?: number | null;
   observacoes?: string | null;
-  ativo: boolean;
-  createdAt: Date;
+  ativo?: boolean;
 }

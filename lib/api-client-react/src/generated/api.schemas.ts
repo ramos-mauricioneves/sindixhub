@@ -186,6 +186,7 @@ export type UserProfileRole =
   (typeof UserProfileRole)[keyof typeof UserProfileRole];
 
 export const UserProfileRole = {
+  global_admin: "global_admin",
   admin: "admin",
   sindico: "sindico",
   vistoriador: "vistoriador",
@@ -199,6 +200,12 @@ export interface UserProfile {
   role: UserProfileRole;
   condominio?: string;
   condominioIds?: number[];
+  /** Tenant FK. Null only for global_admin. */
+  empresaId?: number | null;
+  /** Set when this user is staff of a prestador (e.g. a zelador employed by a terceirizada). */
+  prestadorId?: number | null;
+  /** When true, this user has unrestricted access to every condomínio in their own empresa (no user_condominios rows needed). */
+  escopoEmpresa?: boolean;
   createdAt: string;
 }
 
@@ -206,6 +213,7 @@ export type UpdateUserRoleBodyRole =
   (typeof UpdateUserRoleBodyRole)[keyof typeof UpdateUserRoleBodyRole];
 
 export const UpdateUserRoleBodyRole = {
+  global_admin: "global_admin",
   admin: "admin",
   sindico: "sindico",
   vistoriador: "vistoriador",
@@ -267,6 +275,8 @@ export interface EquipeData {
 
 export interface Condominio {
   id: number;
+  /** Tenant FK — which empresa (síndico profissional company) this condomínio belongs to. */
+  empresaId?: number;
   nome: string;
   cnpj?: string | null;
   tipoCondominio: CondominioTipoCondominio;
@@ -403,6 +413,28 @@ export const AssetStatus = {
   inativo: "inativo",
 } as const;
 
+/**
+ * Trade/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature.
+ */
+export type AssetCategoriaServico =
+  | (typeof AssetCategoriaServico)[keyof typeof AssetCategoriaServico]
+  | null;
+
+export const AssetCategoriaServico = {
+  elevador: "elevador",
+  hidraulica: "hidraulica",
+  eletrica: "eletrica",
+  pintura: "pintura",
+  jardinagem: "jardinagem",
+  portaria_seguranca: "portaria_seguranca",
+  limpeza: "limpeza",
+  ar_condicionado: "ar_condicionado",
+  estrutural_civil: "estrutural_civil",
+  incendio_ppci: "incendio_ppci",
+  dedetizacao: "dedetizacao",
+  outro: "outro",
+} as const;
+
 export interface Asset {
   id: number;
   condominioId: number;
@@ -412,6 +444,8 @@ export interface Asset {
   criticidade: AssetCriticidade;
   status: AssetStatus;
   descricao?: string;
+  /** Trade/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature. */
+  categoriaServico?: AssetCategoriaServico;
   createdAt: string;
   updatedAt: string;
 }
@@ -462,6 +496,25 @@ export const AssetBodyStatus = {
   inativo: "inativo",
 } as const;
 
+export type AssetBodyCategoriaServico =
+  | (typeof AssetBodyCategoriaServico)[keyof typeof AssetBodyCategoriaServico]
+  | null;
+
+export const AssetBodyCategoriaServico = {
+  elevador: "elevador",
+  hidraulica: "hidraulica",
+  eletrica: "eletrica",
+  pintura: "pintura",
+  jardinagem: "jardinagem",
+  portaria_seguranca: "portaria_seguranca",
+  limpeza: "limpeza",
+  ar_condicionado: "ar_condicionado",
+  estrutural_civil: "estrutural_civil",
+  incendio_ppci: "incendio_ppci",
+  dedetizacao: "dedetizacao",
+  outro: "outro",
+} as const;
+
 export interface AssetBody {
   areaId?: number;
   nome: string;
@@ -469,6 +522,7 @@ export interface AssetBody {
   criticidade: AssetBodyCriticidade;
   status: AssetBodyStatus;
   descricao?: string;
+  categoriaServico?: AssetBodyCategoriaServico;
 }
 
 export interface DashboardSummary {
@@ -542,23 +596,178 @@ export interface ContratoCondominioBody {
 }
 
 export interface PrestadorCondominio {
+  /** Association id (not the prestador master record's id — see prestadorId). */
   id: number;
+  prestadorId: number;
   condominioId: number;
+  /** From the master record — read-only here, edit via the empresa-level prestador endpoints. */
   nome: string;
-  especialidade?: string | null;
+  categoria?: string | null;
   telefone?: string | null;
   email?: string | null;
+  vigenciaInicio?: string | null;
+  vigenciaFim?: string | null;
+  valorMensal?: number | null;
   avaliacao?: number | null;
   observacoes?: string | null;
+  ativo: boolean;
   createdAt: string;
 }
 
-export interface PrestadorCondominioBody {
-  nome: string;
-  especialidade?: string;
+export interface CreatePrestadorAssociacaoBody {
+  prestadorId?: number;
+  nome?: string;
+  categoria?: string;
   telefone?: string;
   email?: string;
+  vigenciaInicio?: string;
+  vigenciaFim?: string;
+  valorMensal?: number;
   avaliacao?: number;
+  observacoes?: string;
+}
+
+export interface UpdatePrestadorAssociacaoBody {
+  categoria?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  vigenciaInicio?: string | null;
+  vigenciaFim?: string | null;
+  valorMensal?: number | null;
+  avaliacao?: number | null;
+  observacoes?: string | null;
+  ativo?: boolean;
+}
+
+export interface PrestadorMestre {
+  id: number;
+  empresaId: number;
+  nome: string;
+  cnpj?: string | null;
+  categoria?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  observacoes?: string | null;
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePrestadorMestreBody {
+  nome: string;
+  cnpj?: string;
+  categoria?: string;
+  telefone?: string;
+  email?: string;
+  observacoes?: string;
+  ativo?: boolean;
+}
+
+export interface UpdatePrestadorMestreBody {
+  nome?: string;
+  cnpj?: string | null;
+  categoria?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  observacoes?: string | null;
+  ativo?: boolean;
+}
+
+export interface PrestadorUsuario {
+  id: number;
+  clerkId: string;
+  email: string;
+  name?: string | null;
+}
+
+/**
+ * Provide either clerkId or email — the target user must already have logged into SindixHub at least once.
+ */
+export interface LinkPrestadorUsuarioBody {
+  clerkId?: string;
+  email?: string;
+}
+
+export interface Empresa {
+  id: number;
+  nome: string;
+  cnpj?: string | null;
+  ativo: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmpresaBody {
+  nome: string;
+  cnpj?: string;
+  ativo?: boolean;
+}
+
+export interface SugestaoPrestadorItem {
+  prestadorId: number;
+  nome: string;
+  categoria?: string | null;
+  telefone?: string | null;
+  email?: string | null;
+  avaliacao?: number | null;
+}
+
+export interface SugestaoPrestadorResponse {
+  suggestions: SugestaoPrestadorItem[];
+  categoria?: string;
+  reason?: string;
+}
+
+export type AcionamentoStatus =
+  (typeof AcionamentoStatus)[keyof typeof AcionamentoStatus];
+
+export const AcionamentoStatus = {
+  sugerido: "sugerido",
+  acionado: "acionado",
+  resolvido: "resolvido",
+} as const;
+
+export interface Acionamento {
+  id: number;
+  inspectionId: number;
+  assetId?: number | null;
+  areaId?: number | null;
+  prestadorId: number;
+  status: AcionamentoStatus;
+  observacoes?: string | null;
+  createdByClerkId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateAcionamentoBodyStatus =
+  (typeof CreateAcionamentoBodyStatus)[keyof typeof CreateAcionamentoBodyStatus];
+
+export const CreateAcionamentoBodyStatus = {
+  sugerido: "sugerido",
+  acionado: "acionado",
+  resolvido: "resolvido",
+} as const;
+
+export interface CreateAcionamentoBody {
+  prestadorId: number;
+  assetId?: number;
+  areaId?: number;
+  status?: CreateAcionamentoBodyStatus;
+  observacoes?: string;
+}
+
+export type UpdateAcionamentoBodyStatus =
+  (typeof UpdateAcionamentoBodyStatus)[keyof typeof UpdateAcionamentoBodyStatus];
+
+export const UpdateAcionamentoBodyStatus = {
+  sugerido: "sugerido",
+  acionado: "acionado",
+  resolvido: "resolvido",
+} as const;
+
+export interface UpdateAcionamentoBody {
+  status?: UpdateAcionamentoBodyStatus;
   observacoes?: string;
 }
 
@@ -733,6 +942,29 @@ export type DeleteContrato200 = {
 };
 
 export type DeletePrestador200 = {
+  ok: boolean;
+};
+
+export type SugerirPrestadorParams = {
+  condominioId: number;
+  assetId?: number;
+  areaId?: number;
+  categoria?: string;
+};
+
+export type DeletePrestadorMestre200 = {
+  ok: boolean;
+};
+
+export type LinkPrestadorUsuario200 = {
+  ok: boolean;
+};
+
+export type UnlinkPrestadorUsuario200 = {
+  ok: boolean;
+};
+
+export type DeleteAcionamento200 = {
   ok: boolean;
 };
 

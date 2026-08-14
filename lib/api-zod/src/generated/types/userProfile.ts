@@ -15,5 +15,11 @@ export interface UserProfile {
   role: UserProfileRole;
   condominio?: string;
   condominioIds?: number[];
+  /** Tenant FK. Null only for global_admin. */
+  empresaId?: number | null;
+  /** Set when this user is staff of a prestador (e.g. a zelador employed by a terceirizada). */
+  prestadorId?: number | null;
+  /** When true, this user has unrestricted access to every condomínio in their own empresa (no user_condominios rows needed). */
+  escopoEmpresa?: boolean;
   createdAt: Date;
 }

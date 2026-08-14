@@ -6,11 +6,10 @@
  * OpenAPI spec version: 0.3.0
  */
 
-export interface PrestadorCondominioBody {
-  nome: string;
-  especialidade?: string;
-  telefone?: string;
+/**
+ * Provide either clerkId or email — the target user must already have logged into SindixHub at least once.
+ */
+export interface LinkPrestadorUsuarioBody {
+  clerkId?: string;
   email?: string;
-  avaliacao?: number;
-  observacoes?: string;
 }

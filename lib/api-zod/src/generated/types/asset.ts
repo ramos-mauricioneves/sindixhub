@@ -5,6 +5,7 @@
  * API specification for Assistente de Vistoria Condominial
  * OpenAPI spec version: 0.3.0
  */
+import type { AssetCategoriaServico } from "./assetCategoriaServico";
 import type { AssetCriticidade } from "./assetCriticidade";
 import type { AssetStatus } from "./assetStatus";
 import type { AssetTipo } from "./assetTipo";
@@ -18,6 +19,8 @@ export interface Asset {
   criticidade: AssetCriticidade;
   status: AssetStatus;
   descricao?: string;
+  /** Trade/service category used to match this asset against prestadores.categoria for the acionamento-suggestion feature. */
+  categoriaServico?: AssetCategoriaServico;
   createdAt: Date;
   updatedAt: Date;
 }
