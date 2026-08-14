@@ -83,18 +83,6 @@ export const contratosCondominioTable = pgTable("contratos_condominio", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
 
-export const prestadoresCondominioTable = pgTable("prestadores_condominio", {
-  id: serial("id").primaryKey(),
-  condominioId: integer("condominio_id").notNull(),
-  nome: text("nome").notNull(),
-  especialidade: text("especialidade"),
-  telefone: text("telefone"),
-  email: text("email"),
-  avaliacao: integer("avaliacao"),
-  observacoes: text("observacoes"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const documentosCondominioTable = pgTable("documentos_condominio", {
   id: serial("id").primaryKey(),
   condominioId: integer("condominio_id").notNull(),
@@ -137,10 +125,6 @@ export type UserCondominio = typeof userCondominiosTable.$inferSelect;
 export const insertContratoCondominioSchema = createInsertSchema(contratosCondominioTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertContratoCondominio = z.infer<typeof insertContratoCondominioSchema>;
 export type ContratoCondominio = typeof contratosCondominioTable.$inferSelect;
-
-export const insertPrestadorCondominioSchema = createInsertSchema(prestadoresCondominioTable).omit({ id: true, createdAt: true });
-export type InsertPrestadorCondominio = z.infer<typeof insertPrestadorCondominioSchema>;
-export type PrestadorCondominio = typeof prestadoresCondominioTable.$inferSelect;
 
 export const insertDocumentoCondominioSchema = createInsertSchema(documentosCondominioTable).omit({ id: true, createdAt: true, updatedAt: true });
 export type InsertDocumentoCondominio = z.infer<typeof insertDocumentoCondominioSchema>;

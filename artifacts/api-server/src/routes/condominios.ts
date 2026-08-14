@@ -5,7 +5,8 @@ import {
   userCondominiosTable,
   usersTable,
   contratosCondominioTable,
-  prestadoresCondominioTable,
+  prestadoresTable,
+  prestadorCondominiosTable,
   documentosCondominioTable,
   seguroPredialTable,
 } from "@workspace/db/worker";
@@ -14,8 +15,6 @@ import { requireAuth, requireRole, upsertUser } from "../middlewares/requireAuth
 import {
   CreateContratoBody,
   UpdateContratoBody,
-  CreatePrestadorBody,
-  UpdatePrestadorBody,
   CreateDocumentoBody,
   UpdateDocumentoBody,
   UpsertSeguroPredialBody,
@@ -124,17 +123,30 @@ function formatContrato(c: typeof contratosCondominioTable.$inferSelect) {
   };
 }
 
-function formatPrestador(p: typeof prestadoresCondominioTable.$inferSelect) {
+// Joined shape: prestador_condominios row (the association, `pc`) plus its
+// master prestadores row (`p`). Override columns on the association win
+// when set; otherwise the master's value is used — this is the
+// herança/override behavior described in the multi-tenant plan.
+function formatPrestador(row: {
+  pc: typeof prestadorCondominiosTable.$inferSelect;
+  p: typeof prestadoresTable.$inferSelect;
+}) {
+  const { pc, p } = row;
   return {
-    id: p.id,
-    condominioId: p.condominioId,
+    id: pc.id,
+    prestadorId: p.id,
+    condominioId: pc.condominioId,
     nome: p.nome,
-    especialidade: p.especialidade ?? null,
-    telefone: p.telefone ?? null,
-    email: p.email ?? null,
-    avaliacao: p.avaliacao ?? null,
-    observacoes: p.observacoes ?? null,
-    createdAt: p.createdAt,
+    categoria: pc.categoria ?? p.categoria ?? null,
+    telefone: pc.telefone ?? p.telefone ?? null,
+    email: pc.email ?? p.email ?? null,
+    vigenciaInicio: pc.vigenciaInicio ?? null,
+    vigenciaFim: pc.vigenciaFim ?? null,
+    valorMensal: pc.valorMensal ?? null,
+    avaliacao: pc.avaliacao ?? null,
+    observacoes: pc.observacoes ?? null,
+    ativo: pc.ativo,
+    createdAt: pc.createdAt,
   };
 }
 
@@ -197,13 +209,13 @@ async function getUserCondominioIds(db: AppEnv["Variables"]["db"], userId: numbe
  *  4. escopoEmpresa — sindico/vistoriador users flagged as empresa-wide
  *     internal staff get the same unrestricted-within-empresa access as
  *     admin, without needing a user_condominios row per condomínio.
- *  5. Fallback — must be explicitly associated with the condomínio via
+ *  5. prestadorId — if set, the user is staff of a prestador (e.g. a
+ *     zelador employed by a terceirizada). Access is granted if that
+ *     prestador has an active association (prestador_condominios) with the
+ *     target condomínio — implicit, no user_condominios row needed.
+ *  6. Fallback — must be explicitly associated with the condomínio via
  *     user_condominios (the original, still-supported "scoped to just this
  *     one condomínio" case).
- *
- * (Prestador-linked user access — a user whose prestadorId grants them
- * access via prestador_condominios associations — is added in Phase 2 of
- * the multi-tenant migration, once the prestadores tables exist.)
  *
  * Returns the user record on success, or null if authorization fails (the
  * appropriate 403 response is written to the passed-in `err` holder before
@@ -230,6 +242,21 @@ async function authorizeCondominioAccess(
   }
 
   if (user.role === "admin" || user.escopoEmpresa) return { user, error: null };
+
+  if (user.prestadorId) {
+    const [assoc] = await db
+      .select({ id: prestadorCondominiosTable.id })
+      .from(prestadorCondominiosTable)
+      .where(and(
+        eq(prestadorCondominiosTable.prestadorId, user.prestadorId),
+        eq(prestadorCondominiosTable.condominioId, condominioId),
+        eq(prestadorCondominiosTable.ativo, true),
+      ));
+    if (assoc) return { user, error: null };
+    // Falls through to the user_condominios check below — a prestador-staff
+    // user might also be explicitly granted access to an unrelated
+    // condomínio by an admin, so this isn't necessarily a dead end.
+  }
 
   const userCondoIds = await getUserCondominioIds(db, user.id);
   if (!userCondoIds.includes(condominioId)) {
@@ -608,6 +635,11 @@ router.delete("/condominios/:condominioId/contratos/:contratoId", requireAuth, a
 });
 
 // ─── Prestadores ─────────────────────────────────────────────────────────────
+// Master prestador records live at the empresa level (see routes/prestadores.ts
+// for empresa-level CRUD + user-linking). These routes manage the
+// per-condomínio ASSOCIATION (prestador_condominios) — "which prestadores
+// actually work at this condomínio, with which overrides" — not the master
+// record itself.
 
 router.get("/condominios/:condominioId/prestadores", requireAuth, async (c) => {
   const condominioId = parseInt(c.req.param("condominioId")!, 10);
@@ -616,13 +648,21 @@ router.get("/condominios/:condominioId/prestadores", requireAuth, async (c) => {
   if (!user) return error;
   const db = c.get("db");
   const rows = await db
-    .select()
-    .from(prestadoresCondominioTable)
-    .where(eq(prestadoresCondominioTable.condominioId, condominioId))
-    .orderBy(prestadoresCondominioTable.nome);
+    .select({ pc: prestadorCondominiosTable, p: prestadoresTable })
+    .from(prestadorCondominiosTable)
+    .innerJoin(prestadoresTable, eq(prestadoresTable.id, prestadorCondominiosTable.prestadorId))
+    .where(and(eq(prestadorCondominiosTable.condominioId, condominioId), eq(prestadorCondominiosTable.ativo, true)))
+    .orderBy(prestadoresTable.nome);
   return c.json(rows.map(formatPrestador));
 });
 
+// Associates a prestador to this condomínio. Body: either `{ prestadorId }`
+// to associate an existing empresa-level prestador, or full prestador
+// fields (`nome`, `categoria`, ...) to create a brand-new master record in
+// one step (convenience for the common "register this vendor for this one
+// condomínio for now" flow) — either way, optional override fields
+// (categoria/telefone/email/vigenciaInicio/vigenciaFim/valorMensal/
+// avaliacao/observacoes) can be set on the association itself.
 router.post("/condominios/:condominioId/prestadores", requireAuth, async (c) => {
   const condominioId = parseInt(c.req.param("condominioId")!, 10);
   if (isNaN(condominioId)) return c.json({ error: "ID inválido" }, 400);
@@ -631,66 +671,97 @@ router.post("/condominios/:condominioId/prestadores", requireAuth, async (c) => 
   if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
 
   const db = c.get("db");
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = CreatePrestadorBody.safeParse(body);
-  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
-  const { nome, especialidade, telefone, email, avaliacao, observacoes } = parsed.data;
-  const [created] = await db
-    .insert(prestadoresCondominioTable)
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+
+  let prestadorId = typeof body.prestadorId === "number" ? body.prestadorId : undefined;
+  if (!prestadorId) {
+    const nome = body.nome as string | undefined;
+    if (!nome) return c.json({ error: "nome é obrigatório para cadastrar um novo prestador" }, 400);
+    const [condo] = await db.select({ empresaId: condominiosTable.empresaId }).from(condominiosTable).where(eq(condominiosTable.id, condominioId));
+    if (!condo) return c.json({ error: "Condomínio não encontrado" }, 404);
+    const [novoMestre] = await db
+      .insert(prestadoresTable)
+      .values({
+        empresaId: condo.empresaId,
+        nome,
+        categoria: (body.categoria as string) ?? null,
+        telefone: (body.telefone as string) ?? null,
+        email: (body.email as string) ?? null,
+        observacoes: (body.observacoes as string) ?? null,
+      })
+      .returning();
+    prestadorId = novoMestre.id;
+  }
+
+  const [existing] = await db
+    .select()
+    .from(prestadorCondominiosTable)
+    .where(and(eq(prestadorCondominiosTable.prestadorId, prestadorId), eq(prestadorCondominiosTable.condominioId, condominioId)));
+  if (existing) return c.json({ error: "Este prestador já está associado a este condomínio." }, 409);
+
+  const [pc] = await db
+    .insert(prestadorCondominiosTable)
     .values({
+      prestadorId,
       condominioId,
-      nome,
-      especialidade: especialidade ?? null,
-      telefone: telefone ?? null,
-      email: email ?? null,
-      avaliacao: avaliacao ?? null,
-      observacoes: observacoes ?? null,
+      categoria: (body.categoria as string) ?? null,
+      telefone: (body.telefone as string) ?? null,
+      email: (body.email as string) ?? null,
+      vigenciaInicio: (body.vigenciaInicio as string) ?? null,
+      vigenciaFim: (body.vigenciaFim as string) ?? null,
+      valorMensal: body.valorMensal != null ? Number(body.valorMensal) : null,
+      avaliacao: body.avaliacao != null ? Number(body.avaliacao) : null,
+      observacoes: (body.observacoes as string) ?? null,
     })
     .returning();
-  return c.json(formatPrestador(created), 201);
+  const [p] = await db.select().from(prestadoresTable).where(eq(prestadoresTable.id, prestadorId));
+  return c.json(formatPrestador({ pc, p }), 201);
 });
 
 router.patch("/condominios/:condominioId/prestadores/:prestadorId", requireAuth, async (c) => {
   const condominioId = parseInt(c.req.param("condominioId")!, 10);
-  const prestadorId = parseInt(c.req.param("prestadorId")!, 10);
-  if (isNaN(condominioId) || isNaN(prestadorId)) return c.json({ error: "IDs inválidos" }, 400);
+  const associacaoId = parseInt(c.req.param("prestadorId")!, 10);
+  if (isNaN(condominioId) || isNaN(associacaoId)) return c.json({ error: "IDs inválidos" }, 400);
   const { user, error } = await authorizeCondominioAccess(c, condominioId);
   if (!user) return error;
   if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
 
   const db = c.get("db");
-  const body = await c.req.json().catch(() => ({}));
-  const parsed = UpdatePrestadorBody.safeParse(body);
-  if (!parsed.success) return c.json({ error: "Dados inválidos", details: parsed.error.flatten() }, 400);
-  const { nome, especialidade, telefone, email, avaliacao, observacoes } = parsed.data;
-  const [updated] = await db
-    .update(prestadoresCondominioTable)
-    .set({
-      nome,
-      especialidade: especialidade ?? null,
-      telefone: telefone ?? null,
-      email: email ?? null,
-      avaliacao: avaliacao ?? null,
-      observacoes: observacoes ?? null,
-    })
-    .where(and(eq(prestadoresCondominioTable.id, prestadorId), eq(prestadoresCondominioTable.condominioId, condominioId)))
+  const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+  const updateData: Record<string, unknown> = {};
+  for (const field of ["categoria", "telefone", "email", "vigenciaInicio", "vigenciaFim", "observacoes"] as const) {
+    if (body[field] !== undefined) updateData[field] = body[field];
+  }
+  if (body.valorMensal !== undefined) updateData.valorMensal = body.valorMensal != null ? Number(body.valorMensal) : null;
+  if (body.avaliacao !== undefined) updateData.avaliacao = body.avaliacao != null ? Number(body.avaliacao) : null;
+  if (body.ativo !== undefined) updateData.ativo = Boolean(body.ativo);
+  updateData.updatedAt = new Date();
+
+  const [pc] = await db
+    .update(prestadorCondominiosTable)
+    .set(updateData)
+    .where(and(eq(prestadorCondominiosTable.id, associacaoId), eq(prestadorCondominiosTable.condominioId, condominioId)))
     .returning();
-  if (!updated) return c.json({ error: "Prestador não encontrado" }, 404);
-  return c.json(formatPrestador(updated));
+  if (!pc) return c.json({ error: "Prestador não encontrado neste condomínio" }, 404);
+  const [p] = await db.select().from(prestadoresTable).where(eq(prestadoresTable.id, pc.prestadorId));
+  return c.json(formatPrestador({ pc, p }));
 });
 
+// Removes the association (this condomínio stops using this prestador) —
+// does NOT delete the empresa-level master record, which may still be
+// associated with other condomínios.
 router.delete("/condominios/:condominioId/prestadores/:prestadorId", requireAuth, async (c) => {
   const condominioId = parseInt(c.req.param("condominioId")!, 10);
-  const prestadorId = parseInt(c.req.param("prestadorId")!, 10);
-  if (isNaN(condominioId) || isNaN(prestadorId)) return c.json({ error: "IDs inválidos" }, 400);
+  const associacaoId = parseInt(c.req.param("prestadorId")!, 10);
+  if (isNaN(condominioId) || isNaN(associacaoId)) return c.json({ error: "IDs inválidos" }, 400);
   const { user, error } = await authorizeCondominioAccess(c, condominioId);
   if (!user) return error;
   if (user.role === "vistoriador") return c.json({ error: "Acesso negado." }, 403);
 
   const db = c.get("db");
   await db
-    .delete(prestadoresCondominioTable)
-    .where(and(eq(prestadoresCondominioTable.id, prestadorId), eq(prestadoresCondominioTable.condominioId, condominioId)));
+    .delete(prestadorCondominiosTable)
+    .where(and(eq(prestadorCondominiosTable.id, associacaoId), eq(prestadorCondominiosTable.condominioId, condominioId)));
   return c.json({ ok: true });
 });
 

@@ -9,6 +9,8 @@ import assetsRouter from "./assets";
 import publicAssetsRouter from "./public-assets";
 import dashboardRouter from "./dashboard";
 import assembleiasRouter from "./assembleias";
+import prestadoresRouter from "./prestadores";
+import empresasRouter from "./empresas";
 
 const router = new Hono<AppEnv>();
 
@@ -21,5 +23,7 @@ router.route("/", publicAssetsRouter);
 router.route("/", assetsRouter);
 router.route("/", dashboardRouter);
 router.route("/", assembleiasRouter);
+router.route("/", prestadoresRouter);
+router.route("/", empresasRouter);
 
 export default router;
