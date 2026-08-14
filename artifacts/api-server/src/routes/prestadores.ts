@@ -153,10 +153,15 @@ router.post("/prestadores/:id/usuarios", requireAuth, async (c) => {
 
   const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
   const clerkId = body.clerkId as string | undefined;
-  if (!clerkId) return c.json({ error: "clerkId é obrigatório" }, 400);
+  const email = body.email as string | undefined;
+  if (!clerkId && !email) return c.json({ error: "clerkId ou email é obrigatório" }, 400);
 
-  const [targetUser] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId));
-  if (!targetUser) return c.json({ error: "Usuário não encontrado" }, 404);
+  const [targetUser] = clerkId
+    ? await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId))
+    : await db.select().from(usersTable).where(eq(usersTable.email, email!));
+  if (!targetUser) {
+    return c.json({ error: "Usuário não encontrado. A pessoa precisa ter feito login no SindixHub ao menos uma vez antes de ser vinculada." }, 404);
+  }
 
   const [existingLink] = await db
     .select()

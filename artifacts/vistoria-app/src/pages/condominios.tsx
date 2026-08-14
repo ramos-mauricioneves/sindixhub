@@ -1185,6 +1185,16 @@ interface PrestadorAssociacao {
 type PrestadorForm = { nome: string; categoria: string; telefone: string; email: string; avaliacao: string; observacoes: string; };
 const emptyPrestadorForm = (): PrestadorForm => ({ nome: "", categoria: "", telefone: "", email: "", avaliacao: "", observacoes: "" });
 
+interface PrestadorMestre {
+  id: number;
+  empresaId: number;
+  nome: string;
+  categoria: string | null;
+  telefone: string | null;
+  email: string | null;
+  ativo: boolean;
+}
+
 function PrestadoresPanel({ condominioId }: { condominioId: number }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -1192,6 +1202,10 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<PrestadorForm>(emptyPrestadorForm());
+  // "" = create a brand-new empresa-level prestador; a numeric string = associate
+  // this existing master record instead (its own fields become read-only here,
+  // since editing an association only edits the override, not the master).
+  const [prestadorExistenteId, setPrestadorExistenteId] = useState<string>("");
 
   const queryKey = ["condominios", condominioId, "prestadores"];
   const { data: prestadores, isPending } = useQuery({
@@ -1199,10 +1213,27 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
     queryFn: () => apiFetch<PrestadorAssociacao[]>(`/api/condominios/${condominioId}/prestadores`),
   });
 
-  const openNew = () => { setForm(emptyPrestadorForm()); setEditingId(null); setDialogOpen(true); };
+  // Needed to look up the empresa's full prestador roster, so the "usar
+  // existente" dropdown can offer prestadores already registered at the
+  // empresa level but not yet associated with THIS condomínio (e.g. one
+  // that serves several buildings of the same síndico profissional).
+  const { data: condominio } = useQuery({
+    queryKey: ["condominios", condominioId, "detail"],
+    queryFn: () => apiFetch<{ empresaId: number }>(`/api/condominios/${condominioId}`),
+  });
+  const { data: prestadoresDaEmpresa } = useQuery({
+    queryKey: ["empresas", condominio?.empresaId, "prestadores"],
+    queryFn: () => apiFetch<PrestadorMestre[]>(`/api/empresas/${condominio!.empresaId}/prestadores`),
+    enabled: !!condominio?.empresaId,
+  });
+  const jaAssociadosIds = new Set((prestadores ?? []).map(p => p.prestadorId));
+  const prestadoresDisponiveis = (prestadoresDaEmpresa ?? []).filter(p => p.ativo && !jaAssociadosIds.has(p.id));
+
+  const openNew = () => { setForm(emptyPrestadorForm()); setEditingId(null); setPrestadorExistenteId(""); setDialogOpen(true); };
   const openEdit = (p: PrestadorAssociacao) => {
     setForm({ nome: p.nome, categoria: p.categoria ?? "", telefone: p.telefone ?? "", email: p.email ?? "", avaliacao: p.avaliacao?.toString() ?? "", observacoes: p.observacoes ?? "" });
     setEditingId(p.id);
+    setPrestadorExistenteId("");
     setDialogOpen(true);
   };
 
@@ -1212,14 +1243,22 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
   const createPrestador = useMutation({
     mutationFn: () => apiFetch(`/api/condominios/${condominioId}/prestadores`, {
       method: "POST",
-      body: JSON.stringify({
-        nome: form.nome.trim(),
-        categoria: form.categoria || undefined,
-        telefone: form.telefone || undefined,
-        email: form.email || undefined,
-        avaliacao: form.avaliacao ? parseInt(form.avaliacao) : undefined,
-        observacoes: form.observacoes || undefined,
-      }),
+      body: JSON.stringify(
+        prestadorExistenteId
+          ? {
+              prestadorId: parseInt(prestadorExistenteId, 10),
+              avaliacao: form.avaliacao ? parseInt(form.avaliacao) : undefined,
+              observacoes: form.observacoes || undefined,
+            }
+          : {
+              nome: form.nome.trim(),
+              categoria: form.categoria || undefined,
+              telefone: form.telefone || undefined,
+              email: form.email || undefined,
+              avaliacao: form.avaliacao ? parseInt(form.avaliacao) : undefined,
+              observacoes: form.observacoes || undefined,
+            },
+      ),
     }),
     onSuccess, onError,
   });
@@ -1301,10 +1340,33 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>{editingId ? t("condominios.editPrestador") : t("condominios.addPrestador")}</DialogTitle></DialogHeader>
           <div className="space-y-4">
+            {!editingId && prestadoresDisponiveis.length > 0 && (
+              <div className="space-y-2">
+                <Label>Prestador</Label>
+                <Select
+                  value={prestadorExistenteId || "__novo__"}
+                  onValueChange={(v) => {
+                    if (v === "__novo__") { setPrestadorExistenteId(""); return; }
+                    setPrestadorExistenteId(v);
+                    const existente = prestadoresDisponiveis.find(p => String(p.id) === v);
+                    if (existente) setForm(f => ({ ...f, nome: existente.nome, categoria: existente.categoria ?? "", telefone: existente.telefone ?? "", email: existente.email ?? "" }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__novo__">+ Cadastrar novo prestador</SelectItem>
+                    {prestadoresDisponiveis.map(p => (
+                      <SelectItem key={p.id} value={String(p.id)}>{p.nome}{p.categoria ? ` (${categoriaLabel(p.categoria)})` : ""}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Já cadastrados na empresa mas ainda não associados a este condomínio.</p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>{t("condominios.prestadorNome")} *</Label>
-              <Input value={form.nome} onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))} disabled={!!editingId} />
-              {editingId && <p className="text-xs text-muted-foreground">O nome pertence ao cadastro do prestador (nível empresa) e não é editável aqui.</p>}
+              <Input value={form.nome} onChange={(e) => setForm(f => ({ ...f, nome: e.target.value }))} disabled={!!editingId || !!prestadorExistenteId} />
+              {(editingId || prestadorExistenteId) && <p className="text-xs text-muted-foreground">O nome pertence ao cadastro do prestador (nível empresa) e não é editável aqui.</p>}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
@@ -1339,7 +1401,7 @@ function PrestadoresPanel({ condominioId }: { condominioId: number }) {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>{t("common.cancel")}</Button>
-            <Button onClick={handleSave} disabled={!form.nome.trim() || createPrestador.isPending || updatePrestador.isPending}>
+            <Button onClick={handleSave} disabled={(!prestadorExistenteId && !form.nome.trim()) || createPrestador.isPending || updatePrestador.isPending}>
               {(createPrestador.isPending || updatePrestador.isPending) && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {t("common.save")}
             </Button>
